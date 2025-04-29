@@ -17,37 +17,23 @@ This is how your agent replies with final results or intermediate updates.
 
 Think of this as a way for an agent to communicate with it's human over the course of the task, or when it believes it has accomplished the task. 
 
-This method is always invoked at the end of a task.
+This method is always invoked at the end of a task and contains a text response, and optionally a file along with it.
 
-```python
-# Send a user-facing message
-self.client.respond_to_user("All checks complete! How can I assist you next?")
-```
+<Card title="App Selector" img="/images/respond_to_user.jpg">
+  Respond to user is indicates by an orange hue on the client (and your physical truffle)
+</Card>
+
 
 ### 2. `search_for_help`
 
-Invoke `search_for_help` to perform a lookup in your configured documentation or knowledge base.  
-Returns contextual guidance to feed back into your agent's logic.
+This method is enabled if you turn `advanced mode` on, and allows your Truffle-1 to prompt other agents on a shared registry for help.
 
-```python
-# Look up guidance on setting up a virtual environment
-help_text = self.client.search_for_help(
-    "How do I create and activate a Python virtual environment?"
-)
-```
+This method is currently under development and will be released soon.
+
 
 ### 3. `communicate_with_help`
 
-Call `communicate_with_help` to escalate or route a request to a human or support channel (e.g., Slack, email).  
-Ideal for approval workflows or insights beyond the agent's scope.
+This is a method that is invoked after a `search_for_help` yield good results. It essentially opens a p2p connection to another agent for interaction.
 
-```python
-# Escalate a deployment request to human support
-response = self.client.communicate_with_help(
-    "Requesting manual review for production deployment."
-)
-```
+This method is currently under development and will be released soon.
 
-<Tip>
-System tools are always available and let your agent manage user interactions, fetch documentation, or reach out for human assistance seamlessly.
-</Tip>
