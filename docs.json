@@ -24,9 +24,11 @@
             "group": "Guides",
             "pages": [
               "guides/a-simple-app",
-              "guides/async-tools-and-conditionals",
-              "guides/building-a-research-app",
-              "guides/system-tools"
+              "guides/conditionals-and-predicates",
+              "guides/async-tools",
+              "guides/networking",
+              "guides/system-tools",
+              "guides/building-a-deep-research-app"
             ]
           }
         ]

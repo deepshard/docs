@@ -1,107 +1,111 @@
 ---
-title: 'Development'
-description: 'Preview changes locally to update your docs'
+title: Build Your First App
+description: "Create and deploy a simple WeatherChecker using the Truffle SDK"
 ---
 
+## Build Your First App: WeatherChecker
+
+In this tutorial, you'll build a `WeatherChecker` app that fetches current weather for any city using the wttr.in API.
+
 <Info>
-  **Prerequisite**: Please install Node.js (version 19 or higher) before proceeding. <br />
-  Please upgrade to ```docs.json``` before proceeding and delete the legacy ```mint.json``` file.
+Prerequisites:
+- Python 3.10+
+- Virtual environment activated
+- Truffle SDK installed
 </Info>
 
-Follow these steps to install and run Mintlify on your operating system:
+### 1. Initialize
 
-**Step 1**: Install Mintlify:
-
-<CodeGroup>
-
-  ```bash npm
-  npm i -g mintlify
-  ```
-
-```bash yarn
-yarn global add mintlify
-```
-
-</CodeGroup>
-
-**Step 2**: Navigate to the docs directory (where the `docs.json` file is located) and execute the following command:
+Open your terminal and run:
 
 ```bash
-mintlify dev
+truffle init
 ```
 
-A local preview of your documentation will be available at `http://localhost:3000`.
+You'll be prompted for a project name and description. This creates:
 
-### Custom Ports
+- `app.py` — your main Python file  
+- `manifest.json` — app metadata  
+- `requirements.txt` — dependency list  
 
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. To run Mintlify on port 3333, for instance, use this command:
+---
+
+### 2. Write Your App
+
+Replace the contents of `app.py` with:
+
+```python
+import truffle
+import requests
+
+class WeatherChecker:
+    def __init__(self):
+        self.client = truffle.TruffleClient()
+
+    @truffle.tool(
+        description="Get current weather for a specified city",
+        icon="cloud.sun"
+    )
+    @truffle.args(
+        city="Name of the city to fetch weather for"
+    )
+    def get_weather(self, city: str) -> str:
+        """Fetches weather data from wttr.in and returns a text summary."""
+        try:
+            self.client.tool_update(f"Fetching weather for {city}...")
+            response = requests.get(f"http://wttr.in/{city}?format=3")
+            return response.text
+        except Exception as e:
+            self.client.tool_update(f"Error: {e}")
+            raise ValueError(f"Failed to fetch weather for {city}: {e}")
+
+if __name__ == "__main__":
+    truffle.run(WeatherChecker())
+```
+
+---
+
+### 3. Install Dependencies
+
+Ensure your `requirements.txt` lists:
+
+```text
+truffle-sdk>=0.1.0
+requests>=2.28
+```
+
+Then install:
 
 ```bash
-mintlify dev --port 3333
+pip install -r requirements.txt
 ```
 
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
+---
 
-```md
-Port 3000 is already in use. Trying 3001 instead.
-```
+### 4. Build & Upload
 
-## Mintlify Versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local website doesn't align with the production version, please update the CLI:
-
-<CodeGroup>
-
-```bash npm
-npm i -g mintlify@latest
-```
-
-```bash yarn
-yarn global upgrade mintlify
-```
-
-</CodeGroup>
-
-## Validating Links
-
-The CLI can assist with validating reference links made in your documentation. To identify any broken links, use the following command:
+Bundle and deploy your app:
 
 ```bash
-mintlify broken-links
+truffle build
+truffle upload
 ```
 
-## Deployment
+- `truffle build` – creates a `.truffle` package  
+- `truffle upload` – deploys to cloud or connected Truffle-1  
+
+---
+
+### 5. Test Your App
+
+Launch the Truffle Client, select **WeatherChecker**, and ask:
+
+> What's the weather in New York?
+
+The agent will call your `get_weather("New York")` tool and reply, for example:
+
+> New York: 🌤 +25°C
 
 <Tip>
-  Unlimited editors available under the [Pro
-  Plan](https://mintlify.com/pricing) and above.
+You can extend this app with additional tools (e.g. forecasts, alerts) or customize icons and descriptions.
 </Tip>
-
-If the deployment is successful, you should see the following:
-
-<Frame>
-  <img src="/images/checks-passed.png" style={{ borderRadius: '0.5rem' }} />
-</Frame>
-
-## Code Formatting
-
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of mintlify: `npm remove -g mintlify`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall mintlify: `npm install -g mintlify`
-  </Accordion>
-
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the \~/.mintlify folder. Afterwards, run `mintlify dev` again.
-  </Accordion>
-</AccordionGroup>
-
-Curious about what changed in the CLI version? [Check out the CLI changelog.](https://www.npmjs.com/package/mintlify?activeTab=versions)
