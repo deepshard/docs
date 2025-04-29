@@ -25,6 +25,7 @@
             "pages": [
               "guides/a-simple-app",
               "guides/conditionals-and-predicates",
+              "guides/managing-context",
               "guides/async-tools",
               "guides/networking",
               "guides/system-tools",
@@ -37,7 +38,7 @@
         "tab": "Using the client",
         "groups": [
           {
-            "group": "The truffle client",
+            "group": "Setting up",
             "pages": [
               "client/introduction"
             ]
