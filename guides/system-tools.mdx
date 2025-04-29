@@ -1,0 +1,53 @@
+---
+title: System Tools
+description: "Built-in utilities your Truffle agent can call during execution"
+---
+
+## ⚙️ System Tools Overview
+
+<Info>
+These system tools are provided by the Truffle runtime.
+You can think of these as built-in methods that the agent has access to at anytime.
+</Info>
+
+### 1. `respond_to_user`
+
+The agent uses `respond_to_user` to send a message directly back to the end user. 
+This is how your agent replies with final results or intermediate updates.
+
+Think of this as a way for an agent to communicate with it's human over the course of the task, or when it believes it has accomplished the task. 
+
+This method is always invoked at the end of a task.
+
+```python
+# Send a user-facing message
+self.client.respond_to_user("All checks complete! How can I assist you next?")
+```
+
+### 2. `search_for_help`
+
+Invoke `search_for_help` to perform a lookup in your configured documentation or knowledge base.  
+Returns contextual guidance to feed back into your agent's logic.
+
+```python
+# Look up guidance on setting up a virtual environment
+help_text = self.client.search_for_help(
+    "How do I create and activate a Python virtual environment?"
+)
+```
+
+### 3. `communicate_with_help`
+
+Call `communicate_with_help` to escalate or route a request to a human or support channel (e.g., Slack, email).  
+Ideal for approval workflows or insights beyond the agent's scope.
+
+```python
+# Escalate a deployment request to human support
+response = self.client.communicate_with_help(
+    "Requesting manual review for production deployment."
+)
+```
+
+<Tip>
+System tools are always available and let your agent manage user interactions, fetch documentation, or reach out for human assistance seamlessly.
+</Tip>

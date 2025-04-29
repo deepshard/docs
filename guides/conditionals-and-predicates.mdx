@@ -1,0 +1,46 @@
+---
+title: Conditional Tool Exposure with Predicates
+description: "Show or hide Truffle tools dynamically at runtime using Python predicates"
+---
+
+### What is a predicate?
+
+Predicates let you control exactly which tools your Agent sees at runtime. Instead of a fixed list, you write any Python function that returns `True` or `False`, and the SDK will only expose the tool when your logic allows it. This unlocks powerful scenarios:
+
+- Show or hide tools based on internal state (e.g., only after you've run a search)  
+- React to environment variables, config flags, or user roles  
+- Build arbitrarily complex visibility rules to keep your UI clean and context-aware  
+
+```python
+# This is a helper function for a predicate
+def _has_history(self) -> bool:
+    """Return True only if we've recorded at least one research result."""
+    return len(self.research_history) > 0
+
+
+# Notice how we pass in the predicate
+@truffle.tool(
+    description="Display past research history",
+    icon="list.bullet.clipboard",
+    predicate=_has_history
+)
+def view_history(self) -> str:
+    """Returns a formatted list of past queries & answers."""
+    if not self.research_history:
+        return "No research history recorded yet."
+    lines = [
+        f"{i+1}. '{e['query']}' → {e['answer'][:100]}…"
+        for i, e in enumerate(self.research_history)
+    ]
+    return "**Research History**\n\n" + "\n".join(lines)
+
+
+# Now view_history will only appear when _has_history() returns True
+```
+
+<Tip>
+This pattern scales to any condition—feature flags, user permissions, external API health checks, or even time-based rules. Combine predicates with your tools to build flexible, self-aware agents that only surface the right capabilities at the right moment.
+</Tip>
+
+### Scenarios where you may want predicates
+Assume a situation where you have a tree of tools but don't want the model to overload it's context
