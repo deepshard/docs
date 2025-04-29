@@ -1,55 +1,43 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Truffle",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#000000",
+    "light": "#000000",
+    "dark": "#ffffff"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.ico",
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Building apps",
         "groups": [
           {
-            "group": "Get Started",
+            "group": "Getting Started",
             "pages": [
-              "introduction",
-              "quickstart",
-              "development"
+              "getting-started/what-are-apps",
+              "getting-started/setup"
             ]
           },
           {
-            "group": "Essentials",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
+              "guides/a-simple-app",
+              "guides/async-tools-and-conditionals",
+              "guides/building-a-research-app",
+              "guides/system-tools"
             ]
           }
         ]
       },
       {
-        "tab": "API Reference",
+        "tab": "Using the client",
         "groups": [
           {
-            "group": "API Documentation",
+            "group": "The truffle client",
             "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint Examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "client/introduction"
             ]
           }
         ]
@@ -58,45 +46,51 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Homepage",
+          "href": "https://www.itsalltruffles.com",
+          "icon": "house",
+          "color": {
+            "light": "#000000",
+            "dark": "#ffffff"
+          }
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
+          "anchor": "Support",
+          "href": "https://discord.gg/itsalltruffles",
+          "icon": "discord",
+          "color": {
+            "light": "#000000",
+            "dark": "#ffffff"
+          }
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "X",
+          "href": "https://x.com/itsalltruffles",
+          "icon": "x",
+          "color": {
+            "light": "#000000",
+            "dark": "#ffffff"
+          }
         }
       ]
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/images/truffle.png",
+    "dark": "/images/truffle.png"
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "https://discord.gg/itsalltruffles"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/itsalltruffles",
+      "github": "https://github.com/deepshard"
     }
   }
 }
