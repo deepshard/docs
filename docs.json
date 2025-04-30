@@ -40,7 +40,8 @@
           {
             "group": "Setting up",
             "pages": [
-              "client/introduction"
+              "client/introduction",
+              "client/using-the-client"
             ]
           }
         ]
