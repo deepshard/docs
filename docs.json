@@ -38,10 +38,17 @@
         "tab": "Using the client",
         "groups": [
           {
-            "group": "Setting up",
+            "group": "Getting started",
             "pages": [
-              "client/introduction",
-              "client/using-the-client"
+              "client/installation"
+            ]
+          },
+          {
+            "group": "Using the client",
+            "pages": [
+              "client/navigation",
+              "client/general-usage",
+              "client/usage-with-SDK"
             ]
           }
         ]

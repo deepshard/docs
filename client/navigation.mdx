@@ -1,0 +1,62 @@
+---
+title: Navigation
+description: "Learn how to navigate the different views in the Truffle client interface"
+---
+
+### Organization
+
+The application is divided into 3 main views: 
+- [Prompt bar](#prompt-bar)
+- [History](#history)
+- [Settings](#settings)
+
+You can use cmd/ctrl + shift to open the navigation menu
+
+<img
+  src="/images/switch-focus-ui.png"
+  alt="Switch focus UI"
+/>
+
+
+### Prompt Bar
+
+[Tasks](general-usage#running-tasks) are started by submitting prompts via the [promptbar](general-usage#writing-and-submitting-prompt)
+<img
+  src="/images/promptbar.png"
+  alt="Truffle promptbar"
+/>
+
+<Tip>You can access this view through cmd/ctrl + shift then N</Tip>
+
+
+### History
+
+Previous tasks are displayed in and accessed through the History view.
+
+Status Colors:
+- <b>Orange</b>: a task has outputted a respond to user step
+- <b>Green</b>: a task is executing tool calls and has not yet responded to the user
+- [Paused](general-usage#pause-and-lock): a task is paused and will not generate further steps until the task is unpaused
+- [Locked](general-usage#pause-and-lock): a task is locked and will continue to generate steps until the task is unlocked
+
+<img
+  src="/images/history-ui.png"
+  alt="History with status colors, pause and lock icons"
+/>
+
+<Tip>You can access this view through cmd/ctrl + shift then H</Tip>
+
+### Settings
+
+You can control certain parts of your OS through the Settings view.
+
+- <b>Server Status</b>: Server status displays the status of your client's connection to our cloud server
+- <b>Apps</b>: The apps section shows all available apps and gives you the option to delete any 3rd party apps. Deleting an app will only remove it from your client.
+- <b>Check for updates</b>: Clicking check for updates will check if your client is up to date and provide an option to download our most up-to-date version
+
+<img
+  src="/images/settings-ui.png"
+  alt="Settings UI"
+/>
+
+<Tip>You can access this view through cmd/ctrl + shift then S</Tip>

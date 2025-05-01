@@ -1,0 +1,84 @@
+---
+title: General usage
+description: "Learn how to use the Truffle client interface effectively"
+---
+
+### Selecting an App
+
+The [app](/getting-started/what-are-apps) selected before submitting your prompt will determine the toolkit your agent has to complete the given task<br/>
+
+<img
+  src="/images/app-select-ui.png"
+  alt="App select UI"
+/>
+
+
+- Your prompt will be classified as you type, assigning a relevant app based on its contents. <br/> 
+- You can use option/alt to open the app select menu and manually select an app
+
+<Tip>You can start the process of creating a new app by selecting the "Create app" option, see our [SDK docs](/docs/getting-started/setup) for more info</Tip>
+
+
+### Writing and Submitting Prompt
+
+A <b>prompt</b> is the user message responsible for setting the agent on a task. You can attach external files to your prompt that will be added to the agent's context.
+
+<img
+  src="/images/promptbar.png"
+  alt="Truffle promptbar"
+/>
+
+<Tip>Long prompts will have summary titles generated. These are not used by the agent, they exist for the user's experience</Tip>
+
+
+### Running Tasks
+
+A <b>task</b> is an ongoing loop of reasoning stages, tool calls, and result outputs your agent steps through to complete the objective specified in your prompt
+
+<img
+  src="/images/taskview-ui.png"
+  alt="Task view UI"
+/>
+
+A <b>step</b> is an individual reasoning stage, tool call, and result your agent generates within a task <sub>Your agent will iterate through steps until it's ready to provide results to the user via the [respondToUser](/guides/system-tools#respond-to-user) tool</sub>
+
+<img
+  src="/images/step-screenshot.png"
+  alt="Step screenshot"
+/>
+
+<Tip>Your agent considers each previous step when executing a new step, creating cohesion between actions</Tip>
+
+#### Pause and Lock
+
+<img
+  src="/images/taskview-hotkeys.png"
+  alt="Taskview hotkeys"
+/>
+
+<b>Pause</b>: you can pause your task by pressing P in your taskview. <br/><sub>Pausing a task prevents further steps from being generated</sub>
+
+<img
+  src="/images/task-paused.png"
+  alt="Task paused"
+/>
+
+<b>Lock</b>: You can lock your task by pressing L in your taskview.<br/> <sub> Locking a task forces your agent to continue creating steps until you unlock it. This works by restricting the agent's use of the [respondToUser](/guides/system-tools#respond-to-user) tool until the task is unlocked.</sub>
+
+<img
+  src="/images/task-locked.png"
+  alt="Task locked"
+/>
+
+<Tip>This can be useful for deep research tasks, comprehensive analysis, or anything else that you want your agent to spend a controlled amount of time on</Tip>
+
+### Viewing Results
+
+Each step will have a <b>result</b> based on the tool used. When your agent uses the [respondToUser](/guides/system-tools#respond-to-user) tool, that step's result will act as a report on previous steps and prompt the user to continue the interaction.
+
+<img
+  src="/images/previewer-ui.png"
+  alt="Previewer UI"
+/>
+
+Clicking on a step will open an associated preview window containing the step's reasoning stage, tool call, and result.
