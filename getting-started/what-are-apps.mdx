@@ -31,7 +31,7 @@ By default, when using the client - you are connecting to an instance of the tru
       <li>Deepseek-R1</li>
       <li>Qwen-3-235B</li>
     </ul>
-    <Warning>We may not have a model selector in the cloud</Warning>
+    <Warning>We will not have a model selector in the cloud.</Warning>
     <table>
       <thead>
         <tr>
@@ -106,7 +106,7 @@ Truffle apps are toolboxes and logic available to your model in a continous loop
 
 Models using our runtime do not by default respond to their user, but instead loop over tools until they complete a short-medium term task as defined by the user prompt.
 
-ChatGPT is simply an agent, with one tool. 
+ChatGPT, for example, is simply an agent, with one tool. 
 With truffle, you can give your agent arbitrarily many capabilities.
 
 <Card title="App Selector" img="/images/appselector.png">
@@ -120,7 +120,7 @@ With truffle, you can give your agent arbitrarily many capabilities.
 | :------------- | :-------------------------------------------------------------------------- |
 | App            | A set of tools given to a model to pick from, when executing a task within a runtime |
 | Tool           | A function that returns context to update the state of the model            |
-| Tool rollout   | A sequence of tool calls where each subsequent tool call depends on all previous tool calls |
+| Tool Rollout   | A sequence of tool calls where each subsequent tool call depends on all previous tool calls |
 | Task           | An initial prompt, that allows the model to perform a tool rollout          |
 
 
@@ -129,6 +129,7 @@ Out of the box, the SDK today has a few features that set it apart from other ag
 
 The simple ones are stuff like;
 - Guaranteed tool execution (no hallucinations)
+- Custom prompts
 - Conditionals
 - Async tools
 - Context management

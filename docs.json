@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Building apps",
+        "tab": "Building Truffle Apps",
         "groups": [
           {
             "group": "Getting Started",
@@ -35,7 +35,7 @@
         ]
       },
       {
-        "tab": "Using the client",
+        "tab": "The Truffle Client",
         "groups": [
           {
             "group": "Setting up",
