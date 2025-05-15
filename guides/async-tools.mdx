@@ -1,0 +1,37 @@
+---
+title: Async Tools  
+description: "Give your app multi-tasking abilities"  
+---
+
+### Async tools in Truffle
+
+Making your tool async allows the model to run it as a background task. This is especially useful for long-running processes, such as waiting on a slow API or performing inference. Results from async tools will automatically be appended to the context, making the experience seamless. You could, for example:
+
+* Call multiple slow SQL databases  
+* Run a deep research API call while continuing with other tasks  
+* Or even launch several deep research tasks in parallel  
+
+To make a tool async, simply add the `nonblock` flag to `@truffle.flags` before the function definition: `@truffle.flags(nonblock=True)`
+
+```python {7}
+# Here we create an async tool
+# The model can do other tasks while the tool is running
+@truffle.tool(
+    description="Searches with Perplexity", 
+    icon="magnifying-glass"
+)
+@truffle.flags(nonblock=True)   # This will make the tool async 
+def AsyncPerplexitySearch(self, query: str) -> str:    
+    # This can take however long it takes
+    return self.client.perplexity_search(query=query, model="sonar-pro")
+```
+
+<Card 
+    title="Async Search"
+    img="/images/async-search.png"
+>
+The default Chat app comes with an async search tool, test it out!
+</Card>
+
+
+<Note>The app might respond to the user before the async task is finished. Once the tool finishes, its result is injected into the context, but the agent won’t proactively follow up, it will wait for your next request. </Note>
