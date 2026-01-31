@@ -117,6 +117,8 @@ Commands:
   disconnect <device|all>  Disconnect and clear credentials
   deploy [path]            Deploy an app (reads type from truffile.yaml)
   list <apps|devices>      List installed apps or devices
+  models                    List AI models on connected device
+  proxy                     Start OpenAI-compatible inference proxy
 
 Examples:
   truffile scan                # find devices on network
@@ -124,6 +126,8 @@ Examples:
   truffile deploy ./my-app
   truffile deploy              # uses current directory
   truffile list apps
+  truffile models              # show loaded models
+  truffile proxy               # start proxy on :8080
 ```
 
 <Note>
