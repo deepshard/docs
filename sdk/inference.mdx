@@ -49,12 +49,11 @@ truffile proxy
 ✓ Proxy running at http://127.0.0.1:8080/v1
 
   Use with OpenAI SDK:
-    from openai import OpenAI
-    client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="x")
+    from openai import OpenAI (we dont require you to use an API key so its not needed)
+    client = OpenAI(base_url="http://127.0.0.1:8080/v1")
 
-  Or set environment variables:
+  Or set environment variable:
     export OPENAI_BASE_URL=http://127.0.0.1:8080/v1
-    export OPENAI_API_KEY=anything
 
   Press Ctrl+C to stop
 ```
@@ -68,10 +67,7 @@ Once the proxy is running, you can use the standard OpenAI Python SDK:
 ```python
 from openai import OpenAI
 
-client = OpenAI(
-    base_url="http://127.0.0.1:8080/v1",
-    api_key="anything"  # Required but not checked
-)
+client = OpenAI(base_url="http://127.0.0.1:8080/v1")
 
 response = client.chat.completions.create(
     model="default",  # Uses the default loaded model
@@ -232,10 +228,7 @@ To use your Truffle's inference from anywhere, you can tunnel the proxy using [n
 
 4. Use this URL as your OpenAI base URL:
    ```python
-   client = OpenAI(
-       base_url="https://abc123.ngrok.io/v1",
-       api_key="anything"
-   )
+   client = OpenAI(base_url="https://abc123.ngrok.io/v1")
    ```
 
 <Warning>
