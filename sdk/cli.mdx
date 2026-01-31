@@ -22,6 +22,8 @@ Commands:
   disconnect <device|all>  Disconnect and clear credentials
   deploy [path]            Deploy an app (reads type from truffile.yaml)
   list <apps|devices>      List installed apps or devices
+  models                    List AI models on connected device
+  proxy                     Start OpenAI-compatible inference proxy
 ```
 
 ---
@@ -218,9 +220,12 @@ truffile list devices
 | `truffile deploy -i` | Deploy with interactive terminal |
 | `truffile list apps` | List installed apps |
 | `truffile list devices` | List connected devices |
+| `truffile models` | List AI models on device |
+| `truffile proxy` | Start OpenAI-compatible proxy |
 
 ---
 
 ## Next Steps
 
-Ready to build your own apps? Check out the [Building Apps](/sdk/building-apps) guide.
+- Ready to build your own apps? Check out the [Building Apps](/sdk/building-apps) guide.
+- Want to use your Truffle for AI inference? See the [Inference](/sdk/inference) guide.
