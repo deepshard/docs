@@ -2,6 +2,18 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Truffle",
+  "llmsTxt": {
+    "enabled": true
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity"
+    ]
+  },
   "colors": {
     "primary": "#000000",
     "light": "#ff690f",
@@ -11,44 +23,65 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Building Truffle Apps",
+        "tab": "SDK",
         "groups": [
           {
             "group": "Getting Started",
             "pages": [
-              "getting-started/what-are-apps",
-              "getting-started/setup"
+              "sdk/installation",
+              "sdk/cli"
             ]
           },
           {
-            "group": "Guides",
+            "group": "Building Apps",
             "pages": [
-              "guides/a-simple-app",
-              "guides/conditionals-and-predicates",
-              "guides/managing-context",
-              "guides/async-tools",
-              "guides/networking",
-              "guides/system-tools",
-              "guides/building-a-deep-research-app"
+              "sdk/building-apps",
+              "sdk/focus-app",
+              "sdk/ambient-app"
             ]
           }
         ]
       },
       {
-        "tab": "The Truffle Client",
+        "tab": "TruffleOS Client",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "client/installation"
+              "client/overview"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Hardware",
+        "groups": [
           {
-            "group": "Using the client",
+            "group": "Truffle-1",
             "pages": [
-              "client/navigation",
-              "client/general-usage",
-              "client/usage-with-SDK"
+              "hardware/overview"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Release Notes",
+        "groups": [
+          {
+            "group": "Changelog",
+            "pages": [
+              "release-notes/changelog"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "FAQs",
+        "groups": [
+          {
+            "group": "FAQs",
+            "pages": [
+              "faqs/general"
             ]
           }
         ]
@@ -58,7 +91,7 @@
       "anchors": [
         {
           "anchor": "Homepage",
-          "href": "https://www.itsalltruffles.com",
+          "href": "/sdk/installation",
           "icon": "house",
           "color": {
             "light": "#000000",
@@ -66,7 +99,7 @@
           }
         },
         {
-          "anchor": "Support",
+          "anchor": "Discord",
           "href": "https://discord.gg/itsalltruffles",
           "icon": "discord",
           "color": {
@@ -77,7 +110,7 @@
         {
           "anchor": "X",
           "href": "https://x.com/itsalltruffles",
-          "icon": "x",
+          "icon": "x-twitter",
           "color": {
             "light": "#000000",
             "dark": "#ffffff"
@@ -88,7 +121,8 @@
   },
   "logo": {
     "light": "/images/truffle.png",
-    "dark": "/images/truffle.png"
+    "dark": "/images/truffle.png",
+    "href": "https://order.truffle.net"
   },
   "navbar": {
     "links": [

@@ -1,0 +1,100 @@
+---
+title: What are Truffle Apps?
+---
+
+## What Are Truffle Apps?
+
+Truffle apps give your Truffle agent capabilities. They're containerized programs that run on your Truffle, providing tools and services the agent can use.
+
+There are two types of apps:
+
+| Type | When It Runs | What It Does |
+|------|--------------|--------------|
+| **Focus** | On demand | Exposes tools Truffle can call when needed |
+| **Ambient** | On a schedule | Runs periodically and posts to your feed |
+
+<CardGroup cols={2}>
+  <Card title="Example Apps" icon="github" href="https://github.com/deepshard/Truffle-Apps">
+    Browse the official example apps repository for reference implementations.
+  </Card>
+</CardGroup>
+
+---
+
+## Focus Apps
+
+Focus apps are **MCP servers** that expose tools Truffle can call on demand. When you ask your Truffle a question or ask it to do a task, it can invoke your app's tools to get the answer.
+
+### How It Works
+
+1. Your app runs an MCP server on port `8000`
+2. Truffle sees your tools and their descriptions
+3. When relevant, Truffle calls your tools
+4. Your app returns data, and Truffle responds to you
+
+### Example Use Cases
+
+- **Finance tools** — get stock prices, company info, market news
+- **Research tools** — web search, URL scraping, API queries
+- **Integrations** — connect to any external service or API
+- **Utilities** — calculators, converters, data processors
+
+### Architecture
+
+```
+┌─────────────────┐      ┌─────────────────┐
+│   Your Truffle  │      │   Focus App     │
+│                 │      │                 │
+│      Agent  ─────┼──────┼─► MCP Server    │
+│                 │      │   (port 8000)   │
+│                 │      │                 │
+│                 │ ◄────┼── Tool Results  │
+└─────────────────┘      └─────────────────┘
+```
+
+Focus apps use [FastMCP](https://github.com/jlowin/fastmcp) with `streamable-http` transport.
+
+---
+
+## Ambient Apps
+
+Ambient apps run **on a schedule** and post content to your feed. They're perfect for background tasks that surface information without you asking.
+
+### How It Works
+
+1. Your app runs on a schedule you define (every 5 minutes, hourly, at specific times, etc.)
+2. It fetches or generates content
+3. It posts to your feed using `post_to_feed()`
+4. You see the content on your Truffle's home screen
+
+### Example Use Cases
+
+- **Stock trackers** — portfolio updates throughout the day
+- **News aggregators** — curated headlines from your favorite sources
+- **Social monitors** — Reddit, Twitter, or other social feeds
+- **Alerts** — weather, calendar reminders, system notifications
+
+### Architecture
+
+```
+┌─────────────────┐      ┌─────────────────┐
+│   Your Truffle  │      │   Ambient App   │
+│                 │      │                 │
+│   Scheduler ────┼──────┼─► Run app       │
+│                 │      │                 │
+│   Feed ◄────────┼──────┼── post_to_feed()│
+└─────────────────┘      └─────────────────┘
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Build a Focus App" icon="bullseye" href="/sdk/focus-app">
+    Create an MCP server with tools your Truffle can call.
+  </Card>
+  <Card title="Build an Ambient App" icon="clock" href="/sdk/ambient-app">
+    Create a scheduled app that posts to your feed.
+  </Card>
+</CardGroup>
