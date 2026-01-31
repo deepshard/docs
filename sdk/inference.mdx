@@ -1,0 +1,273 @@
+---
+title: Inference
+description: "Run AI inference on your Truffle using the OpenAI-compatible API"
+---
+
+Your Truffle has powerful AI models running locally. The truffile CLI provides an OpenAI-compatible proxy that lets you use these models with any OpenAI SDK or tool.
+
+## Quick Start
+
+### Check Available Models
+
+See what models are loaded on your Truffle:
+
+```bash
+truffile models
+```
+
+```
+🍄‍🟫 Models on truffle-6272
+
+  ✓ Llama-3.2-3B
+    id: 5d9a9c10-58cd-4b9c-b456-67d21cafb945
+  ✓ Qwen3-30B-A3B-Thinking-2507 reasoner
+    id: 99b7eefa-e051-4699-b172-7535e4b87a28
+
+Memory: 453MB / 62842MB
+```
+
+<Note>
+Models marked with `reasoner` support chain-of-thought reasoning and will include their thinking process in responses.
+</Note>
+
+### Start the Proxy
+
+Start an OpenAI-compatible proxy server:
+
+```bash
+truffile proxy
+```
+
+```
+🍄‍🟫 Starting OpenAI proxy
+
+✓ Resolving truffle-6272.local
+✓ Connecting to inference service
+  Device: truffle-6272 (192.168.1.32)
+  Models: 2 loaded
+
+✓ Proxy running at http://127.0.0.1:8080/v1
+
+  Use with OpenAI SDK:
+    from openai import OpenAI
+    client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="x")
+
+  Or set environment variables:
+    export OPENAI_BASE_URL=http://127.0.0.1:8080/v1
+    export OPENAI_API_KEY=anything
+
+  Press Ctrl+C to stop
+```
+
+---
+
+## Using with OpenAI SDK
+
+Once the proxy is running, you can use the standard OpenAI Python SDK:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:8080/v1",
+    api_key="anything"  # Required but not checked
+)
+
+response = client.chat.completions.create(
+    model="default",  # Uses the default loaded model
+    messages=[
+        {"role": "user", "content": "What is the capital of France?"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+### Streaming Responses
+
+```python
+stream = client.chat.completions.create(
+    model="default",
+    messages=[{"role": "user", "content": "Write a haiku about coding"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+### Structured Output (JSON Schema)
+
+Request structured JSON responses:
+
+```python
+response = client.chat.completions.create(
+    model="default",
+    messages=[{"role": "user", "content": "List 3 programming languages"}],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "languages",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "languages": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": ["languages"]
+            }
+        }
+    }
+)
+```
+
+### Tool Calling
+
+The proxy supports OpenAI-style function/tool calling:
+
+```python
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "City name"}
+            },
+            "required": ["location"]
+        }
+    }
+}]
+
+response = client.chat.completions.create(
+    model="default",
+    messages=[{"role": "user", "content": "What's the weather in Tokyo?"}],
+    tools=tools
+)
+
+# Check if the model wants to call a tool
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Function: {tool_call.function.name}")
+    print(f"Arguments: {tool_call.function.arguments}")
+```
+
+---
+
+## Proxy Options
+
+### Custom Port
+
+Run the proxy on a different port:
+
+```bash
+truffile proxy --port 9000
+```
+
+### Bind to All Interfaces
+
+Allow connections from other machines on your network:
+
+```bash
+truffile proxy --host 0.0.0.0
+```
+
+### Debug Mode
+
+Include reasoning/thinking in responses (for reasoner models):
+
+```bash
+truffile proxy --debug
+```
+
+---
+
+## Exposing to the Internet
+
+To use your Truffle's inference from anywhere, you can tunnel the proxy using [ngrok](https://ngrok.com):
+
+### Install ngrok
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    brew install ngrok
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```powershell
+    choco install ngrok
+    ```
+  </Tab>
+  <Tab title="Linux">
+    ```bash
+    curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+      | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
+      && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
+      | sudo tee /etc/apt/sources.list.d/ngrok.list \
+      && sudo apt update \
+      && sudo apt install ngrok
+    ```
+  </Tab>
+</Tabs>
+
+### Start the Tunnel
+
+1. Start the proxy in one terminal:
+   ```bash
+   truffile proxy
+   ```
+
+2. In another terminal, start ngrok:
+   ```bash
+   ngrok http 8080
+   ```
+
+3. You'll get a public URL like `https://abc123.ngrok.io`
+
+4. Use this URL as your OpenAI base URL:
+   ```python
+   client = OpenAI(
+       base_url="https://abc123.ngrok.io/v1",
+       api_key="anything"
+   )
+   ```
+
+<Warning>
+Anyone with your ngrok URL can use your Truffle for inference. Only share it with people you trust, or use ngrok's authentication features.
+</Warning>
+
+---
+
+## Command Reference
+
+| Command | Description |
+|---------|-------------|
+| `truffile models` | List AI models on connected device |
+| `truffile proxy` | Start proxy on localhost:8080 |
+| `truffile proxy --port <port>` | Use custom port |
+| `truffile proxy --host <host>` | Bind to specific interface |
+| `truffile proxy --device <name>` | Connect to specific Truffle |
+| `truffile proxy --debug` | Include reasoning in responses |
+
+---
+
+## Source Code
+
+The inference proxy implementation is open source. See how it works:
+
+<Card title="truffile/infer" icon="github" href="https://github.com/deepshard/truffile/tree/main/truffile/infer">
+  OpenAI-compatible proxy implementation
+</Card>
+
+Key files:
+- `proxy.py` - HTTP server that translates OpenAI API requests to Truffle's gRPC inference API
+- Handles streaming, tool calls, JSON schema, and model resolution
+
+---
+

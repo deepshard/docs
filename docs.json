@@ -37,7 +37,8 @@
             "pages": [
               "sdk/building-apps",
               "sdk/focus-app",
-              "sdk/ambient-app"
+              "sdk/ambient-app",
+              "sdk/inference"
             ]
           }
         ]
