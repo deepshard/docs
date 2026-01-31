@@ -41,16 +41,9 @@ Focus apps are **MCP servers** that expose tools Truffle can call on demand. Whe
 
 ### Architecture
 
-```
-┌─────────────────┐      ┌─────────────────┐
-│   Your Truffle  │      │   Focus App     │
-│                 │      │                 │
-│      Agent  ─────┼──────┼─► MCP Server    │
-│                 │      │   (port 8000)   │
-│                 │      │                 │
-│                 │ ◄────┼── Tool Results  │
-└─────────────────┘      └─────────────────┘
-```
+<Frame>
+  <img src="/images/focus-arch.png" alt="Focus App Architecture" />
+</Frame>
 
 Focus apps use [FastMCP](https://github.com/jlowin/fastmcp) with `streamable-http` transport.
 
@@ -76,15 +69,9 @@ Ambient apps run **on a schedule** and post content to your feed. They're perfec
 
 ### Architecture
 
-```
-┌─────────────────┐      ┌─────────────────┐
-│   Your Truffle  │      │   Ambient App   │
-│                 │      │                 │
-│   Scheduler ────┼──────┼─► Run app       │
-│                 │      │                 │
-│   Feed ◄────────┼──────┼── post_to_feed()│
-└─────────────────┘      └─────────────────┘
-```
+<Frame>
+  <img src="/images/ambient-arch.png" alt="Ambient App Architecture" />
+</Frame>
 
 ---
 
