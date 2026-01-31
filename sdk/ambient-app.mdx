@@ -1,0 +1,363 @@
+---
+title: Build an Ambient App
+description: "Create a scheduled app that posts to your feed"
+---
+
+In this guide, we'll build **Hedge** — an ambient app that tracks stock prices and posts updates to your feed on a schedule.
+
+<Card title="Source Code" icon="github" href="https://github.com/deepshard/Truffle-Apps/tree/main/ambient/hedge">
+  View the complete Hedge app on GitHub
+</Card>
+
+---
+
+## What We're Building
+
+Hedge fetches stock prices from Alpha Vantage and posts updates to your Truffle feed every 2 hours during market hours.
+
+**Features:**
+- Configurable stock tickers via environment variables
+- Price charts generated dynamically
+- Runs on a schedule (only during specified hours)
+
+---
+
+## Project Structure
+
+```
+hedge/
+├── app.py           # Main application code
+├── truffile.yaml    # App configuration
+└── icon.png         # App icon (optional)
+```
+
+---
+
+## Step 1: Create the Config File
+
+Create `truffile.yaml` to define your app:
+
+```yaml
+metadata:
+  name: Hedge
+  type: background
+  description: |
+    Track your stock portfolio with live price updates and charts in your feed.
+  process:
+    cmd:
+      - python
+      - app.py
+    working_directory: /
+    environment:
+      PYTHONUNBUFFERED: "1"
+      HEDGE_TICKERS: "AAPL,MSFT,GOOGL"
+  icon_file: ./icon.png
+  default_schedule:
+    type: interval
+    interval:
+      duration: "2hr"
+      schedule:
+        daily_window: "06:00-22:00"
+
+files:
+  - source: ./app.py
+    destination: ./app.py
+
+run: |
+  pip install requests
+  pip install gourmet[ambient]
+```
+
+### Key Configuration
+
+| Field | Description |
+|-------|-------------|
+| `type: background` | Makes this an Ambient app |
+| `default_schedule` | When and how often to run |
+| `environment` | Environment variables your app can read |
+| `files` | Files to copy into the container |
+| `run` | Shell commands to install dependencies |
+
+### Schedule Options
+
+**Interval** — Run every N minutes/hours:
+```yaml
+default_schedule:
+  type: interval
+  interval:
+    duration: "10m"    # 10 minutes
+```
+
+**Times** — Run at specific times:
+```yaml
+default_schedule:
+  type: times
+  times:
+    run_times: ["09:00", "12:00", "18:00"]
+```
+
+---
+
+## Step 2: Write the App
+
+Create `app.py`:
+
+```python
+import os
+import requests
+from datetime import datetime
+from gourmet.ambient import run_ambient, AmbientContext
+
+# Read config from environment variables
+API_KEY = os.getenv("ALPHAVANTAGE_API_KEY", "demo")
+TICKERS = os.getenv("HEDGE_TICKERS", "AAPL,MSFT").split(",")
+BASE_URL = "https://www.alphavantage.co/query"
+
+
+def fetch_stock_data(symbol: str) -> dict | None:
+    """Fetch daily stock data from Alpha Vantage."""
+    try:
+        resp = requests.get(BASE_URL, params={
+            "function": "TIME_SERIES_DAILY",
+            "symbol": symbol.strip().upper(),
+            "outputsize": "compact",
+            "apikey": API_KEY,
+        }, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        if "Time Series (Daily)" not in data:
+            return None
+        return data
+    except Exception as e:
+        print(f"Failed to fetch {symbol}: {e}")
+        return None
+
+
+def hedge_ambient(ctx: AmbientContext):
+    """Main ambient function — runs on schedule."""
+    
+    for symbol in TICKERS:
+        symbol = symbol.strip().upper()
+        if not symbol:
+            continue
+        
+        # Fetch the data
+        data = fetch_stock_data(symbol)
+        if not data:
+            continue
+        
+        # Parse the response
+        ts = data["Time Series (Daily)"]
+        latest_date = sorted(ts.keys(), reverse=True)[0]
+        latest = ts[latest_date]
+        
+        price = float(latest["4. close"])
+        open_price = float(latest["1. open"])
+        change = price - open_price
+        change_pct = (change / open_price) * 100
+        arrow = "📈" if change >= 0 else "📉"
+        
+        # Format the content
+        title = f"{arrow} {symbol}: ${price:.2f}"
+        body = f"""
+{symbol} Stock Update
+
+Price: ${price:.2f}
+Change: {'+' if change >= 0 else ''}{change:.2f} ({change_pct:+.2f}%)
+        """.strip()
+        
+        # Post to feed
+        ctx.bg.post_to_feed(
+            title=title,
+            body=body,
+            src_uri=f"https://finance.yahoo.com/quote/{symbol}",
+            content_timestamp=datetime.now()
+        )
+
+
+if __name__ == "__main__":
+    run_ambient(hedge_ambient)
+```
+
+---
+
+## Step 3: Understanding the Code
+
+### The Ambient Pattern
+
+Every ambient app follows this pattern:
+
+```python
+from gourmet.ambient import run_ambient, AmbientContext
+
+def my_app(ctx: AmbientContext):
+    # Your logic here
+    ctx.bg.post_to_feed(...)
+
+if __name__ == "__main__":
+    run_ambient(my_app)
+```
+
+### The `post_to_feed()` Function
+
+This is how you post content to your feed:
+
+```python
+ctx.bg.post_to_feed(
+    title="Card Title",           # Required: shown prominently
+    body="Card content...",       # Required: main text
+    src_uri="https://...",        # Optional: link to source
+    media_uris=["https://..."],   # Optional: list of image URLs
+    content_timestamp=datetime.now()  # Optional: when content was created
+)
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `title` | str | Yes | Card title shown in feed |
+| `body` | str | Yes | Main content text |
+| `src_uri` | str | No | Link to original source |
+| `media_uris` | list[str] | No | Image URLs to display |
+| `content_timestamp` | datetime | No | When the content was created |
+
+### Reading Configuration
+
+Use environment variables for configuration:
+
+```python
+# In truffile.yaml
+environment:
+  MY_SETTING: "value"
+
+# In app.py
+import os
+my_setting = os.getenv("MY_SETTING", "default")
+```
+
+---
+
+## API Reference
+
+### `gourmet.ambient` Module
+
+Import the ambient runtime:
+
+```python
+from gourmet.ambient import run_ambient, AmbientContext
+```
+
+---
+
+### `run_ambient(func)`
+
+The entry point for your ambient app. Call this in your `__main__` block.
+
+```python
+def my_app(ctx: AmbientContext):
+    # Your app logic
+    pass
+
+if __name__ == "__main__":
+    run_ambient(my_app)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `func` | `Callable[[AmbientContext], None]` | Your main app function |
+
+---
+
+### `AmbientContext`
+
+The context object passed to your ambient function. Provides access to Truffle services.
+
+```python
+def my_app(ctx: AmbientContext):
+    # Access the background service
+    ctx.bg.post_to_feed(...)
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ctx.bg` | `BackgroundService` | Service for posting to the feed |
+
+---
+### `ctx.bg.post_to_feed()`
+
+Posts a card to your Truffle feed.
+
+```python
+ctx.bg.post_to_feed(
+    title="Card Title",
+    body="Card content text...",
+    src_uri="https://example.com/source",
+    media_uris=["https://example.com/image.png"],
+    content_timestamp=datetime.now()
+)
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `title` | `str` | **Yes** | Card title displayed prominently |
+| `body` | `str` | **Yes** | Main content text (supports markdown) |
+| `src_uri` | `str` | No | URL to the original source (opens when tapped) |
+| `media_uris` | `list[str]` | No | List of image URLs to display |
+| `content_timestamp` | `datetime` | No | When the content was created |
+
+<Tip>
+**Images**: Use publicly accessible URLs for `media_uris`. The images will be displayed in the feed card.
+</Tip>
+
+---
+
+## Step 4: Deploy Your App
+
+Once your app is ready, deploy it to your Truffle:
+
+```bash
+cd hedge
+truffile deploy
+```
+
+Truffile will:
+1. Validate your `truffile.yaml`
+2. Check Python syntax
+3. Upload files to your Truffle
+4. Run the install commands
+5. Register the app with the scheduler
+
+<Card title="CLI Reference" icon="terminal" href="/sdk/cli#deploying-apps">
+  See all deploy options including interactive mode
+</Card>
+
+---
+
+## Tips
+
+<Tip>
+**Test locally** before deploying by running your script directly:
+
+```bash
+python app.py
+```
+
+Note: `post_to_feed()` won't work locally, but you can test your data fetching logic.
+</Tip>
+
+<Warning>
+**Rate limits**: Be mindful of API rate limits. The Alpha Vantage free tier for example allows 25 requests/day. Adjust your schedule accordingly.
+</Warning>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Build a Focus App" icon="bullseye" href="/sdk/focus-app">
+    Create an MCP server with tools your Truffle can call on demand.
+  </Card>
+  <Card title="Example Apps" icon="github" href="https://github.com/deepshard/Truffle-Apps">
+    Browse more example apps for inspiration.
+  </Card>
+</CardGroup>
