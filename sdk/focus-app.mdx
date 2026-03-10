@@ -5,6 +5,10 @@ description: "Give your Truffle MCP tools it can call on demand"
 
 Foreground apps are MCP servers. They expose tools that Truffle can call during active tasks.
 
+<Warning>
+Foreground apps on Truffle must serve MCP over `streamable-http`. `stdio` transport is not supported for deployed foreground apps.
+</Warning>
+
 If you are new to MCP itself, read the protocol docs here:
 
 - [Model Context Protocol Documentation](https://modelcontextprotocol.io/docs)
@@ -125,7 +129,40 @@ Example tools in Kalshi:
 
 ---
 
-## Step 4: Connection Lifecycle and Cleanup
+## Step 4: Test MCP Tools in Chat Before Deploy
+
+You can test your MCP server with Truffle chat before shipping app changes.
+
+1. Start chat:
+
+```bash
+truffile chat
+```
+
+2. Connect your MCP endpoint:
+
+- local MCP example:
+  - `/mcp connect http://127.0.0.1:8000/mcp`
+- hosted MCP example (Exa):
+  - `/mcp connect https://mcp.exa.ai/mcp?exaApiKey=<EXA_API_KEY>&tools=web_search_exa,web_search_advanced_exa,get_code_context_exa,crawling_exa,company_research_exa,people_search_exa,deep_researcher_start,deep_researcher_check`
+
+3. Verify tool discovery:
+
+- `/mcp tools`
+
+4. Run a real tool-routing prompt:
+
+- `use the company research exa tool to find me information about SpaceX`
+
+This is the fastest way to validate tool schemas/descriptions and model routing behavior before deploying your foreground app package.
+
+<Warning>
+Do not commit or publish real API keys in docs, screenshots, logs, or recordings.
+</Warning>
+
+---
+
+## Step 5: Connection Lifecycle and Cleanup
 
 Kalshi foreground keeps a shared API client and closes it on shutdown:
 
@@ -136,7 +173,7 @@ This matters in production. Explicitly closing connections before process exit p
 
 ---
 
-## Step 5: Deploy and Test
+## Step 6: Deploy and Test
 
 ```bash
 truffile validate ./app-store/kalshi

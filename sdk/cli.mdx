@@ -21,9 +21,12 @@ Commands:
   connect <device>         Connect to a Truffle device
   disconnect <device|all>  Disconnect and clear credentials
   deploy [path]            Deploy an app (reads type from truffile.yaml)
+  validate [path]          Validate app config and files
+  delete                   Delete installed apps from device
   list <apps|devices>      List installed apps or devices
-  models                    List AI models on connected device
-  proxy                     Start OpenAI-compatible inference proxy
+  models                   List models on your Truffle
+  chat                     Chat on your Truffle (REPL)
+  proxy                    Run OpenAI-compatible proxy
 ```
 
 ---
@@ -156,7 +159,7 @@ truffile deploy ./my-app
 truffile will:
 1. Validate your `truffile.yaml` configuration
 2. Check syntax for all Python files
-3. Determine if it's an **Ambient** (background) or **Focus** (foreground) app
+3. Resolve app runtime shape (**foreground**, **background**, or both)
 4. Upload files and run installation steps
 5. Register the app with your Truffle
 
@@ -205,6 +208,22 @@ truffile list devices
 
 ---
 
+## Inference Commands
+
+Inference commands available in CLI:
+
+```bash
+truffile models
+truffile chat
+truffile proxy
+```
+
+For `truffile chat`, runtime behavior is controlled inside REPL using slash commands (`/help`, `/config`, `/models`, `/reasoning`, `/mcp`, etc.).  
+Run `truffile chat` by itself and manage behavior in-session.
+See the [Inference](/sdk/inference) page for full command details.
+
+---
+
 ## Command Reference
 
 | Command | Description |
@@ -218,9 +237,12 @@ truffile list devices
 | `truffile deploy` | Deploy app from current directory |
 | `truffile deploy <path>` | Deploy app from specified path |
 | `truffile deploy -i` | Deploy with interactive terminal |
+| `truffile validate [path]` | Validate app config and sources |
+| `truffile delete` | Delete installed apps from connected device |
 | `truffile list apps` | List installed apps |
 | `truffile list devices` | List connected devices |
-| `truffile models` | List AI models on device |
+| `truffile models` | List models on connected device |
+| `truffile chat` | Start chat REPL |
 | `truffile proxy` | Start OpenAI-compatible proxy |
 
 ---

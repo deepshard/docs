@@ -116,18 +116,24 @@ Commands:
   connect <device>         Connect to a Truffle device
   disconnect <device|all>  Disconnect and clear credentials
   deploy [path]            Deploy an app (reads type from truffile.yaml)
+  validate [path]          Validate app config and files
+  delete                   Delete installed apps from device
   list <apps|devices>      List installed apps or devices
-  models                    List AI models on connected device
-  proxy                     Start OpenAI-compatible inference proxy
+  models                   List models on your Truffle
+  chat                     Chat on your Truffle (REPL by default)
+  proxy                    Run OpenAI-compatible proxy
 
 Examples:
   truffile scan                # find devices on network
   truffile connect truffle-6272
   truffile deploy ./my-app
+  truffile deploy --dry-run ./my-app
   truffile deploy              # uses current directory
+  truffile validate ./my-app
   truffile list apps
-  truffile models              # show loaded models
-  truffile proxy               # start proxy on :8080
+  truffile models              # show models on your Truffle
+  truffile chat                # open interactive REPL chat
+  truffile proxy               # run local /v1 proxy
 ```
 
 <Note>

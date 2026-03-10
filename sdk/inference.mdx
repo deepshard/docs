@@ -1,266 +1,181 @@
 ---
 title: Inference
-description: "Run AI inference on your Truffle using the OpenAI-compatible API"
+description: "Use models, chat, and OpenAI-compatible proxy on your Truffle"
 ---
 
-Your Truffle has powerful AI models running locally. The truffile CLI provides an OpenAI-compatible proxy that lets you use these models with any OpenAI SDK or tool.
+Your Truffle exposes inference through three SDK commands:
+
+- `truffile models` — list models on your connected device
+- `truffile chat` — interactive chat REPL (runtime config is done with `/` commands)
+- `truffile proxy` — local OpenAI-compatible proxy
+
+---
 
 ## Quick Start
 
-### Check Available Models
-
-See what models are loaded on your Truffle:
+### 1) List models
 
 ```bash
 truffile models
 ```
 
+This calls the device endpoint:
+
+- `GET /if2/v1/models`
+
+---
+
+### 2) Start chat REPL
+
+```bash
+truffile chat
 ```
-🍄‍🟫 Models on truffle-6272
 
-  ✓ Llama-3.2-3B
-    id: 5d9a9c10-58cd-4b9c-b456-67d21cafb945
-  ✓ Qwen3-30B-A3B-Thinking-2507 reasoner
-    id: 99b7eefa-e051-4699-b172-7535e4b87a28
+`truffile chat` is REPL-first. You do not need startup flags for tuning.  
+Use slash commands inside chat to configure behavior live.
+Use `truffile chat` by itself (chat positional args are not used).
 
-Memory: 453MB / 62842MB
-```
+Chat requests are sent to:
 
-<Note>
-Models marked with `reasoner` support chain-of-thought reasoning and will include their thinking process in responses.
-</Note>
+- `POST /if2/v1/chat/completions`
 
-### Start the Proxy
+On startup you will see:
 
-Start an OpenAI-compatible proxy server:
+- resolved default model
+- connected device
+- available REPL commands
+
+---
+
+### 3) Start OpenAI-compatible proxy
 
 ```bash
 truffile proxy
 ```
 
-```
-🍄‍🟫 Starting OpenAI proxy
+By default:
 
-✓ Resolving truffle-6272.local
-✓ Connecting to inference service
-  Device: truffle-6272 (192.168.1.32)
-  Models: 2 loaded
+- listen: `http://127.0.0.1:8080`
+- OpenAI base URL: `http://127.0.0.1:8080/v1`
+- upstream device API: `/if2/v1/*`
+- you can use something like ngrok to forward this port as well!
+---
 
-✓ Proxy running at http://127.0.0.1:8080/v1
+## Chat Commands
 
-  Use with OpenAI SDK:
-    from openai import OpenAI (we dont require you to use an API key so its not needed)
-    client = OpenAI(base_url="http://127.0.0.1:8080/v1")
+Use `/help` in REPL to list commands.
 
-  Or set environment variable:
-    export OPENAI_BASE_URL=http://127.0.0.1:8080/v1
+### Core REPL commands
 
-  Press Ctrl+C to stop
-```
+| Command | What it does |
+|---------|---------------|
+| `/help` or `/` | Show available commands |
+| `/history` | Show current conversation history summary |
+| `/reset` | Clear current conversation state |
+| `/models` | Open model picker and switch active model |
+| `/config` | Show current chat config values |
+| `/exit` or `/quit` | Exit chat |
+
+### Generation controls
+
+| Command | What it does |
+|---------|---------------|
+| `/reasoning on\|off` | Toggle reasoning output |
+| `/stream on\|off` | Toggle streaming output |
+| `/json on\|off` | Toggle JSON response mode |
+| `/tools on\|off` | Toggle built-in default tools (`web_search`, `web_fetch`) |
+| `/max_tokens <int>` | Set max output tokens |
+| `/temperature <float\|off>` | Set/clear temperature |
+| `/top_p <float\|off>` | Set/clear top-p |
+| `/max_rounds <int>` | Set max assistant/tool loop rounds |
+| `/system <text>` | Set system prompt |
+| `/system clear` | Clear system prompt |
+
+### MCP in chat
+
+| Command | What it does |
+|---------|---------------|
+| `/mcp status` | Show connected MCP endpoint + tool count |
+| `/mcp connect <streamable-http-url>` | Connect external MCP server |
+| `/mcp tools` | List tools from connected MCP |
+| `/mcp disconnect` | Disconnect MCP session |
+
+`/mcp connect` expects an HTTP(S) streamable MCP endpoint.
 
 ---
 
-## Using with OpenAI SDK
+## MCP Testing Workflow (Local and Hosted)
 
-Once the proxy is running, you can use the standard OpenAI Python SDK:
+`truffile chat` can be used as an MCP integration test harness before app deployment.
+
+### Local MCP test
+
+1. Start your local MCP server with streamable HTTP transport.
+2. In chat, connect it:
+   - `/mcp connect http://127.0.0.1:8000/mcp`
+3. Verify discovered tools:
+   - `/mcp tools`
+4. Ask for explicit tool use and verify calls in output.
+
+### Hosted MCP test (Exa example)
+
+Use a hosted MCP endpoint exactly the same way:
+
+- `/mcp connect https://mcp.exa.ai/mcp?exaApiKey=<EXA_API_KEY>&tools=web_search_exa,web_search_advanced_exa,get_code_context_exa,crawling_exa,company_research_exa,people_search_exa,deep_researcher_start,deep_researcher_check`
+- `/mcp tools`
+- prompt example: `use the company research exa tool to find me information about SpaceX`
+
+
+---
+
+
+## Proxy Behavior
+
+`truffile proxy` exposes:
+
+- `GET /v1/models`
+- `POST /v1/chat/completions`
+
+Supported options:
+
+- `--device <name>`: use a specific connected device
+- `--host <host>`: bind interface (default `127.0.0.1`)
+- `--port <port>`: bind port (default `8080`)
+- `--no-think-tags`: keep reasoning separate (`reasoning_content`) instead of injecting `<think>...</think>` into content
+
+---
+
+## OpenAI SDK Example
 
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://127.0.0.1:8080/v1")
-
-response = client.chat.completions.create(
-    model="default",  # Uses the default loaded model
-    messages=[
-        {"role": "user", "content": "What is the capital of France?"}
-    ]
+client = OpenAI(
+    base_url="http://127.0.0.1:8080/v1",
+    api_key="not-required",
 )
 
-print(response.choices[0].message.content)
-```
-
-### Streaming Responses
-
-```python
-stream = client.chat.completions.create(
-    model="default",
-    messages=[{"role": "user", "content": "Write a haiku about coding"}],
-    stream=True
+resp = client.chat.completions.create(
+    model="<model-id-or-uuid-from-truffile-models>",
+    messages=[{"role": "user", "content": "Give me one sentence about Truffle."}],
 )
 
-for chunk in stream:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="", flush=True)
+print(resp.choices[0].message.content)
 ```
-
-### Structured Output (JSON Schema)
-
-Request structured JSON responses:
-
-```python
-response = client.chat.completions.create(
-    model="default",
-    messages=[{"role": "user", "content": "List 3 programming languages"}],
-    response_format={
-        "type": "json_schema",
-        "json_schema": {
-            "name": "languages",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "languages": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    }
-                },
-                "required": ["languages"]
-            }
-        }
-    }
-)
-```
-
-### Tool Calling
-
-The proxy supports OpenAI-style function/tool calling:
-
-```python
-tools = [{
-    "type": "function",
-    "function": {
-        "name": "get_weather",
-        "description": "Get the current weather for a location",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {"type": "string", "description": "City name"}
-            },
-            "required": ["location"]
-        }
-    }
-}]
-
-response = client.chat.completions.create(
-    model="default",
-    messages=[{"role": "user", "content": "What's the weather in Tokyo?"}],
-    tools=tools
-)
-
-# Check if the model wants to call a tool
-if response.choices[0].message.tool_calls:
-    tool_call = response.choices[0].message.tool_calls[0]
-    print(f"Function: {tool_call.function.name}")
-    print(f"Arguments: {tool_call.function.arguments}")
-```
-
----
-
-## Proxy Options
-
-### Custom Port
-
-Run the proxy on a different port:
-
-```bash
-truffile proxy --port 9000
-```
-
-### Bind to All Interfaces
-
-Allow connections from other machines on your network:
-
-```bash
-truffile proxy --host 0.0.0.0
-```
-
-### Debug Mode
-
-Include reasoning/thinking in responses (for reasoner models):
-
-```bash
-truffile proxy --debug
-```
-
----
-
-## Exposing to the Internet
-
-To use your Truffle's inference from anywhere, you can tunnel the proxy using [ngrok](https://ngrok.com):
-
-### Install ngrok
-
-<Tabs>
-  <Tab title="macOS">
-    ```bash
-    brew install ngrok
-    ```
-  </Tab>
-  <Tab title="Windows">
-    ```powershell
-    choco install ngrok
-    ```
-  </Tab>
-  <Tab title="Linux">
-    ```bash
-    curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-      | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
-      && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-      | sudo tee /etc/apt/sources.list.d/ngrok.list \
-      && sudo apt update \
-      && sudo apt install ngrok
-    ```
-  </Tab>
-</Tabs>
-
-### Start the Tunnel
-
-1. Start the proxy in one terminal:
-   ```bash
-   truffile proxy
-   ```
-
-2. In another terminal, start ngrok:
-   ```bash
-   ngrok http 8080
-   ```
-
-3. You'll get a public URL like `https://abc123.ngrok.io`
-
-4. Use this URL as your OpenAI base URL:
-   ```python
-   client = OpenAI(base_url="https://abc123.ngrok.io/v1")
-   ```
-
-<Warning>
-Anyone with your ngrok URL can use your Truffle for inference. Only share it with people you trust, or use ngrok's authentication features.
-</Warning>
 
 ---
 
 ## Command Reference
 
-| Command | Description |
-|---------|-------------|
-| `truffile models` | List AI models on connected device |
-| `truffile proxy` | Start proxy on localhost:8080 |
-| `truffile proxy --port <port>` | Use custom port |
-| `truffile proxy --host <host>` | Bind to specific interface |
-| `truffile proxy --device <name>` | Connect to specific Truffle |
-| `truffile proxy --debug` | Include reasoning in responses |
-
----
-
-## Source Code
-
-The inference proxy implementation is open source. See how it works:
-
-<Card title="truffile/infer" icon="github" href="https://github.com/deepshard/truffile/tree/main/truffile/infer">
-  OpenAI-compatible proxy implementation
-</Card>
-
-Key files:
-- `proxy.py` - HTTP server that translates OpenAI API requests to Truffle's gRPC inference API
-- Handles streaming, tool calls, JSON schema, and model resolution
+| Command | Purpose |
+|---------|---------|
+| `truffile models` | List models on connected Truffle |
+| `truffile chat` | Start interactive chat REPL |
+| `truffile proxy` | Start local OpenAI-compatible proxy |
+| `truffile proxy --port <port>` | Run proxy on custom port |
+| `truffile proxy --host <host>` | Bind proxy to specific interface |
+| `truffile proxy --device <name>` | Proxy against specific Truffle device |
+| `truffile proxy --no-think-tags` | Disable `<think>` tag injection in proxy output |
 
 ---
 
