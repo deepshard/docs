@@ -1,397 +1,160 @@
 ---
-title: Build a Focus Apps
-description: "Give your Truffle tools it can call on demand"
+title: Build a Foreground App
+description: "Give your Truffle MCP tools it can call on demand"
 ---
 
-Focus apps give your Truffle tools it can call on demand. There are two ways to add them:
+Foreground apps are MCP servers. They expose tools that Truffle can call during active tasks.
 
-<CardGroup cols={2}>
-  <Card title="Hook an Existing MCP" icon="plug" href="#hook-an-existing-mcp">
-    Connect to an existing MCP server (like Exa) through the client.
-  </Card>
-  <Card title="Build Your Own" icon="code" href="#build-your-own">
-    Create and deploy your own MCP server with custom tools.
-  </Card>
-</CardGroup>
+If you are new to MCP itself, read the protocol docs here:
 
----
+- [Model Context Protocol Documentation](https://modelcontextprotocol.io/docs)
 
-## Hook an Existing MCP
+<Note>
+Truffle foreground apps currently support the MCP tool surface (tool registration and tool invocation over streamable HTTP). Full MCP features are still work in progress
+</Note>
 
-Connect your Truffle to any MCP server that supports `streamable-http` transport — no coding required.
+### Coming Soon
 
-### Steps
-
-1. Open **Settings** in the TruffleOS Desktop app
-2. Go to the **MCPs** section in the sidebar
-3. Click **Add New MCP**
-4. Fill in the server details:
-
-<Frame>
-  <img src="/images/add-your-own-mcp.png" alt="Add New MCP dialog in TruffleOS" />
-</Frame>
-
-| Field | Description |
-|-------|-------------|
-| **Server URL** | The full MCP server URL (e.g., `https://mcp.exa.ai/mcp`) |
-| **Port** | Server port (443 for HTTPS, 80 for HTTP) |
-| **Path** | The MCP endpoint path (usually `mcp`) |
-| **Description** | Optional description of what the MCP provides |
-
-### Example: Adding Exa AI
-
-[Exa AI](https://exa.ai) provides powerful web search, code search, and research tools via MCP.
-
-| Field | Value |
-|-------|-------|
-| **Server URL** | `https://mcp.exa.ai/mcp` |
-| **Port** | `443` |
-| **Path** | `mcp` |
-| **Description** | Connects Truffle to Exa's search capabilities, including web search and code search |
-
-Once added, you can ask your Truffle things like:
-- *"Search for recent developments in AI agents"*
-- *"Find Python examples for OAuth 2.0"*
-- *"Research Stripe and summarize their products"*
-
-<Tip>
-**More MCP servers**: Browse [MCP Market](https://mcpmarket.com) or [Smithery](https://smithery.ai) for more servers you can connect to.
-</Tip>
+- Additional MCP assets: resources, prompts, files, and skills
+- Tool icons and richer tool metadata
+- Read-only tool semantics
+- Tool-driven user elicitation (requesting user input from a tool flow)
+- Expanded authentication and session handling for stateful MCP servers
 
 ---
 
-## Build Your Own
+## What We Are Building
 
-Want custom tools? Build and deploy your own MCP server.
+This walkthrough uses the Kalshi foreground service:
 
-In this guide, we'll build **Research** — a Focus app with web search and content extraction tools.
+- source: [`app-store/kalshi/kalshi_foreground.py`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/kalshi_foreground.py)
+- config: [`app-store/kalshi/truffile.yaml`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/truffile.yaml) (`metadata.foreground.process`)
+- app source repo: [`app-store/kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi)
 
-<Card title="Source Code" icon="github" href="https://github.com/deepshard/truffile/tree/main/example-apps/focus/research">
-  View the complete Research app on GitHub
-</Card>
+It exposes callable tools like:
 
----
+- `get_markets`
+- `get_market`
+- `get_positions`
+- `create_order`
+- `cancel_order`
+- `kalshi_health`
 
-## What We're Building
-
-Research is an MCP server that exposes tools your Truffle can call when you ask questions. When you ask "What's the latest news about AI?", your Truffle can use these tools to search the web and return results.
-
-**Tools we'll create:**
-- `search_web` — Search the web with DuckDuckGo
-- `search_news` — Search for news articles
-- `fetch_url_content` — Extract content from any URL
+These are regular Python functions decorated as MCP tools with clear descriptions and typed parameters.
 
 ---
 
-## What is MCP?
-
-**Model Context Protocol (MCP)** is a standard for AI tools. Focus apps are MCP servers that:
-1. Run on port `8000` 
-2. Expose tools with descriptions
-3. Use `streamable-http` transport
-
-Your Truffle discovers your tools and calls them when relevant to your questions.
-
----
-
-## Project Structure
-
-```
-research/
-├── research.py      # MCP server with tools
-├── truffile.yaml    # App configuration
-└── icon.png         # App icon (optional)
-```
-
----
-
-## Step 1: Create the Config File
-
-Create `truffile.yaml`:
+## Step 1: Foreground Config in `truffile.yaml`
 
 ```yaml
 metadata:
-  name: Research
-  type: foreground
+  name: Kalshi
+  bundle_id: org.deepshard.kalshi
   description: |
-    Tools to help your Truffle research and gather information from the web.
-  process:
-    cmd:
-      - python
-      - research.py
-    working_directory: /
-    environment:
-      PYTHONUNBUFFERED: "1"
+    Have Truffle trade and monitor Kalshi prediction markets for you.
   icon_file: ./icon.png
 
-files:
-  - source: ./research.py
-    destination: ./research.py
+  foreground:
+    process:
+      cmd:
+        - python
+        - kalshi_foreground.py
+      working_directory: /
+      environment:
+        PYTHONUNBUFFERED: "1"
+        KALSHI_API_KEY: "REPLACE_WITH_KALSHI_API_KEY"
+        KALSHI_PRIVATE_KEY: |
+          REPLACE_WITH_KALSHI_PRIVATE_KEY_PEM
 
-run: |
-  pip install mcp requests ddgs
+steps:
+  - name: Install dependencies
+    type: bash
+    run: |
+      apk add --no-cache gcc musl-dev libffi-dev openssl-dev
+      pip install --no-cache-dir "httpx>=0.27.0" "cryptography>=42.0.0"
+  - name: Copy application files
+    type: files
+    files:
+      - source: ./config.py
+        destination: ./config.py
+      - source: ./client.py
+        destination: ./client.py
+      - source: ./kalshi_foreground.py
+        destination: ./kalshi_foreground.py
 ```
 
-### Key Differences from Ambient Apps
-
-| Field | Focus App | Ambient App |
-|-------|-----------|-------------|
-| `type` | `foreground` | `background` |
-| `default_schedule` | Not needed | Required |
-| Server | Runs MCP on port 8000 | Runs once per schedule |
+Use literal block style (`|`) for multiline secrets like PEM keys.
 
 ---
 
-## Step 2: Write the MCP Server
+## Step 2: MCP Server Bootstrap Pattern
 
-Create `research.py`:
-
-```python
-from mcp.server.fastmcp import FastMCP
-
-HOST = "0.0.0.0"
-PORT = 8000
-
-# Create the MCP server
-mcp = FastMCP("research", stateless_http=True, host=HOST, port=PORT)
-
-
-@mcp.tool("search_web", description="Search the web using DuckDuckGo. Returns titles and URLs for the query.")
-async def search_web(query: str, num_results: int = 5) -> str:
-    """Search the web for information."""
-    from ddgs import DDGS
-    
-    results = DDGS().text(query, max_results=num_results)
-    formatted = "\n".join([
-        f"{i+1}. {r['title']}: {r['href']}" 
-        for i, r in enumerate(results)
-    ])
-    return formatted
-
-
-@mcp.tool("search_news", description="Search for recent news articles. Returns headlines with sources and URLs.")
-async def search_news(query: str, num_results: int = 5) -> str:
-    """Search for news articles."""
-    from ddgs import DDGS
-    
-    results = DDGS().news(query, max_results=num_results)
-    formatted = "\n".join([
-        f"{i+1}. [{r['source']}] {r['title']}: {r['url']}" 
-        for i, r in enumerate(results)
-    ])
-    return formatted
-
-
-@mcp.tool("fetch_url_content", description="Fetches and extracts the main text content from a URL. Useful for reading articles.")
-async def fetch_url_content(url: str) -> str:
-    """Extract content from a webpage."""
-    import requests
-    
-    try:
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        # Simple extraction - in production, use a proper extractor
-        return resp.text[:5000]  # First 5000 chars
-    except Exception as e:
-        return f"Error fetching URL: {e}"
-
-
-def main():
-    print(f"Starting Research MCP server on {HOST}:{PORT}")
-    mcp.run(transport="streamable-http")
-
-
-if __name__ == "__main__":
-    main()
-```
-
----
-
-## Step 3: Understanding the Code
-
-### The FastMCP Pattern
-
-Every Focus app follows this pattern:
+Kalshi foreground uses this runtime pattern:
 
 ```python
-from mcp.server.fastmcp import FastMCP
+from app_runtime.mcp import create_mcp_server, run_mcp_server
 
-# 1. Create the server
-mcp = FastMCP("app-name", stateless_http=True, host="0.0.0.0", port=8000)
+mcp = create_mcp_server("kalshi")
 
-# 2. Define tools with @mcp.tool()
-@mcp.tool("tool_name", description="What this tool does")
-async def my_tool(param: str) -> str:
-    # Tool logic here
-    return result
-
-# 3. Run the server
-mcp.run(transport="streamable-http")
-```
-
-### The `@mcp.tool()` Decorator
-
-This is how you expose functions to your Truffle:
-
-```python
-@mcp.tool("tool_name", description="Clear description of what this tool does")
-async def tool_name(param1: str, param2: int = 5) -> str:
+@mcp.tool("get_market", description="Get details for a specific market ticker.")
+async def get_market(ticker: str) -> dict:
     ...
+
+def main() -> None:
+    run_mcp_server(mcp, logger)
 ```
 
-<Warning>
-**Descriptions are critical!** Your Truffle uses the description to decide when to call each tool. A vague description means your tool might not be used when it should be.
-</Warning>
-
-### Writing Good Tool Descriptions
-
-| Bad | Good |
-|--------|---------|
-| `"Searches stuff"` | `"Search the web using DuckDuckGo. Returns titles and URLs."` |
-| `"Gets data"` | `"Fetches and extracts the main text content from a URL."` |
-| `"News"` | `"Search for recent news articles. Returns headlines with sources."` |
-
-**Tips for descriptions:**
-- Say **what** the tool does
-- Mention **what it returns**
-- Note any **limitations** (e.g., "Some sites may block scraping")
-
-### Parameter Types
-
-Use Python type hints — they become the tool's input schema:
-
-```python
-@mcp.tool("example")
-async def example(
-    query: str,           # Required string
-    limit: int = 10,      # Optional int with default
-    include_images: bool = False  # Optional bool
-) -> str:
-    ...
-```
+`create_mcp_server(...)` and `run_mcp_server(...)` are the Truffle app runtime wrappers used by foreground apps.
 
 ---
 
-## API Reference
+## Step 3: Tool Design Guidance (from Kalshi)
 
-### `FastMCP`
+Kalshi tools follow a useful pattern worth copying:
 
-Create an MCP server instance:
+1. Validate inputs early (`limit`, `depth`, enum-like args).
+2. Return structured success/error payloads, not plain strings.
+3. Keep tool descriptions explicit so the model can route correctly.
+4. Report auth/runtime issues using runtime error reporting where needed.
 
-```python
-from mcp.server.fastmcp import FastMCP
+Example tools in Kalshi:
 
-mcp = FastMCP(
-    name="my-app",           # App identifier
-    stateless_http=True,     # Required for Truffle
-    host="0.0.0.0",          # Listen on all interfaces
-    port=8000                # Must be 8000
-)
-```
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `name` | `str` | Identifier for your app |
-| `stateless_http` | `True` | Required for Truffle compatibility |
-| `host` | `"0.0.0.0"` | Listen on all network interfaces |
-| `port` | `8000` | **Must be 8000** for Truffle |
+- read path: `get_markets`, `get_market`, `get_orderbook`, `get_positions`
+- write path: `create_order`, `cancel_order`, `batch_cancel_orders`
+- health path: `kalshi_health`
 
 ---
 
-### `@mcp.tool()`
+## Step 4: Connection Lifecycle and Cleanup
 
-Register a function as a tool:
+Kalshi foreground keeps a shared API client and closes it on shutdown:
 
-```python
-@mcp.tool(name, description)
-async def tool_function(params...) -> str:
-    ...
-```
+- `atexit.register(_cleanup)`
+- `_cleanup()` calls `await _api.close()`
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `name` | `str` | Tool name (used by Truffle to call it) |
-| `description` | `str` | **Important!** Describes when to use this tool |
+This matters in production. Explicitly closing connections before process exit prevents shutdown instability and reduces the chance of container runtime errors.
 
 ---
 
-### `mcp.run()`
-
-Start the MCP server:
-
-```python
-mcp.run(transport="streamable-http")
-```
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `transport` | `"streamable-http"` | Required for Truffle |
-
----
-
-## Step 4: Deploy Your App
-
-Once your app is ready, deploy it to your Truffle:
+## Step 5: Deploy and Test
 
 ```bash
-cd research
-truffile deploy
+truffile validate ./app-store/kalshi
+truffile deploy --dry-run ./app-store/kalshi
+truffile deploy ./app-store/kalshi
 ```
 
-Truffile will:
-1. Validate your `truffile.yaml`
-2. Check Python syntax
-3. Upload files to your Truffle
-4. Run the install commands
-5. Start your MCP server
-
-<Card title="CLI Reference" icon="terminal" href="/sdk/cli#deploying-apps">
-  See all deploy options including interactive mode
-</Card>
+After deploy, run a task that requires market data or order actions and verify Truffle is invoking the foreground tools.
 
 ---
 
-## Tips
+## When to Use Foreground
 
-<Tip>
-**Test locally** before deploying:
+Use foreground apps when you need:
 
-```bash
-python research.py
-```
+- request/response tools invoked during a task
+- deterministic API integrations the model can call on demand
+- low-latency, operation-style behaviors (search, lookup, actions)
 
-Then use an MCP inspector or curl to test your tools:
-
-```bash
-curl http://localhost:8000/mcp
-```
-</Tip>
-
-<Tip>
-**Use async functions** — all tool functions should be `async def`, even if they don't await anything.
-</Tip>
-
-<Warning>
-**Port 8000 is required** — Your Truffle expects the MCP server on this port. Don't change it.
-</Warning>
-
----
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card title="Build an Ambient App" icon="clock" href="/sdk/ambient-app">
-    Create a scheduled app that posts to your feed.
-  </Card>
-  <Card title="Example Apps" icon="github" href="https://github.com/deepshard/truffile/tree/main/example-apps">
-    Browse more example apps for inspiration.
-  </Card>
-</CardGroup>
-
----
-
-## SDK Source Code
-
-<Card title="truffile SDK" icon="github" href="https://github.com/deepshard/truffile">
-  View the complete SDK source code, including the CLI, client library, and inference proxy.
-</Card>
+## Note
+- Remember tool descriptions are very important, follow good practice and add tool descriptions with explination fo each parameter and example usage, this helps your Truffle in calling tools!
