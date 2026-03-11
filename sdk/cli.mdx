@@ -26,7 +26,6 @@ Commands:
   list <apps|devices>      List installed apps or devices
   models                   List models on your Truffle
   chat                     Chat on your Truffle (REPL)
-  proxy                    Run OpenAI-compatible proxy
 ```
 
 ---
@@ -215,10 +214,9 @@ Inference commands available in CLI:
 ```bash
 truffile models
 truffile chat
-truffile proxy
 ```
 
-For `truffile chat`, runtime behavior is controlled inside REPL using slash commands (`/help`, `/config`, `/models`, `/reasoning`, `/mcp`, etc.).  
+For `truffile chat`, runtime behavior is controlled inside REPL using slash commands (`/help`, `/config`, `/models`, `/attach`, `/reasoning`, `/mcp`, etc.).  
 Run `truffile chat` by itself and manage behavior in-session.
 See the [Inference](/sdk/inference) page for full command details.
 
@@ -243,7 +241,6 @@ See the [Inference](/sdk/inference) page for full command details.
 | `truffile list devices` | List connected devices |
 | `truffile models` | List models on connected device |
 | `truffile chat` | Start chat REPL |
-| `truffile proxy` | Start OpenAI-compatible proxy |
 
 ---
 

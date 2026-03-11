@@ -1,13 +1,12 @@
 ---
 title: Inference
-description: "Use models, chat, and OpenAI-compatible proxy on your Truffle"
+description: "Use models and chat on your Truffle, including image attachments in chat"
 ---
 
-Your Truffle exposes inference through three SDK commands:
+Your Truffle exposes inference directly over `/if2/v1/*`.
 
 - `truffile models` — list models on your connected device
 - `truffile chat` — interactive chat REPL (runtime config is done with `/` commands)
-- `truffile proxy` — local OpenAI-compatible proxy
 
 ---
 
@@ -31,34 +30,36 @@ This calls the device endpoint:
 truffile chat
 ```
 
-`truffile chat` is REPL-first. You do not need startup flags for tuning.  
-Use slash commands inside chat to configure behavior live.
-Use `truffile chat` by itself (chat positional args are not used).
+`truffile chat` is REPL-first. Use slash commands inside chat to configure behavior live.
 
 Chat requests are sent to:
 
 - `POST /if2/v1/chat/completions`
 
-On startup you will see:
-
-- resolved default model
-- connected device
-- available REPL commands
-
 ---
 
-### 3) Start OpenAI-compatible proxy
+## Image Input in Chat
 
-```bash
-truffile proxy
+Use `/attach` to attach an image to the next user message.
+
+Local file:
+
+```text
+truffile chat
+/attach ./my-image.png
+What is in this image?
 ```
 
-By default:
+Remote URL:
 
-- listen: `http://127.0.0.1:8080`
-- OpenAI base URL: `http://127.0.0.1:8080/v1`
-- upstream device API: `/if2/v1/*`
-- you can use something like ngrok to forward this port as well!
+```text
+truffile chat
+/attach https://example.com/image.jpg
+Describe this scene briefly.
+```
+
+After the next prompt is sent, the pending attachment is cleared.
+
 ---
 
 ## Chat Commands
@@ -73,6 +74,7 @@ Use `/help` in REPL to list commands.
 | `/history` | Show current conversation history summary |
 | `/reset` | Clear current conversation state |
 | `/models` | Open model picker and switch active model |
+| `/attach <path-or-url>` | Attach image (local path or `http(s)` URL) for next message |
 | `/config` | Show current chat config values |
 | `/exit` or `/quit` | Exit chat |
 
@@ -104,6 +106,31 @@ Use `/help` in REPL to list commands.
 
 ---
 
+## Direct HTTP Endpoints
+
+Use your device hostname/IP directly when needed.
+
+List models:
+
+```bash
+curl -sS http://<device-host>/if2/v1/models
+```
+
+Chat completion:
+
+```bash
+curl -sS http://<device-host>/if2/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "<model-id-or-uuid>",
+    "messages": [
+      {"role": "user", "content": "Give me one sentence about Truffle."}
+    ]
+  }'
+```
+
+---
+
 ## MCP Testing Workflow (Local and Hosted)
 
 `truffile chat` can be used as an MCP integration test harness before app deployment.
@@ -123,45 +150,7 @@ Use a hosted MCP endpoint exactly the same way:
 
 - `/mcp connect https://mcp.exa.ai/mcp?exaApiKey=<EXA_API_KEY>&tools=web_search_exa,web_search_advanced_exa,get_code_context_exa,crawling_exa,company_research_exa,people_search_exa,deep_researcher_start,deep_researcher_check`
 - `/mcp tools`
-- prompt example: `use the company research exa tool to find me information about SpaceX`
-
-
----
-
-
-## Proxy Behavior
-
-`truffile proxy` exposes:
-
-- `GET /v1/models`
-- `POST /v1/chat/completions`
-
-Supported options:
-
-- `--device <name>`: use a specific connected device
-- `--host <host>`: bind interface (default `127.0.0.1`)
-- `--port <port>`: bind port (default `8080`)
-- `--no-think-tags`: keep reasoning separate (`reasoning_content`) instead of injecting `<think>...</think>` into content
-
----
-
-## OpenAI SDK Example
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="http://127.0.0.1:8080/v1",
-    api_key="not-required",
-)
-
-resp = client.chat.completions.create(
-    model="<model-id-or-uuid-from-truffile-models>",
-    messages=[{"role": "user", "content": "Give me one sentence about Truffle."}],
-)
-
-print(resp.choices[0].message.content)
-```
+- prompt example: `use the company research exa tool to find me information about OpenAI`
 
 ---
 
@@ -171,11 +160,5 @@ print(resp.choices[0].message.content)
 |---------|---------|
 | `truffile models` | List models on connected Truffle |
 | `truffile chat` | Start interactive chat REPL |
-| `truffile proxy` | Start local OpenAI-compatible proxy |
-| `truffile proxy --port <port>` | Run proxy on custom port |
-| `truffile proxy --host <host>` | Bind proxy to specific interface |
-| `truffile proxy --device <name>` | Proxy against specific Truffle device |
-| `truffile proxy --no-think-tags` | Disable `<think>` tag injection in proxy output |
 
 ---
-
