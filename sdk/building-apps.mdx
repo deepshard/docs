@@ -25,6 +25,44 @@ There are three app shapes you can build today:
 
 ---
 
+## Create an App Scaffold
+
+Start here when creating a new app from scratch:
+
+```bash
+truffile create
+```
+
+Interactive flow:
+
+```text
+? App name: yo
+? Base path [/home/truffle/abd_work/pyfw]: .
+✓ Created app scaffold: /home/truffle/abd_work/pyfw/yo
+  Files:
+  → truffile.yaml
+  → yo_foreground.py
+  → yo_background.py
+  → icon.png
+
+  Next: truffile validate /home/truffle/abd_work/pyfw/yo
+```
+
+`truffile create` arguments:
+
+- `truffile create <name>`: set app name directly, prompt for base path.
+- `truffile create <name> --path <dir>`: set app name and base directory.
+- `truffile create <name> -p <dir>`: short form for `--path`.
+
+Notes from CLI behavior:
+
+- if `<name>` is omitted, you are prompted for app name.
+- app name cannot contain `/` or `\\`.
+- target directory must not already exist.
+- scaffolded foreground/background file names are based on a safe slug from the app name.
+
+---
+
 ## App Config Shape (Current)
 
 The current SDK supports app-specific foreground/background process blocks under `metadata`.

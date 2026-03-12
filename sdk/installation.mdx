@@ -115,6 +115,7 @@ Commands:
   scan                      Scan network for Truffle devices
   connect <device>         Connect to a Truffle device
   disconnect <device|all>  Disconnect and clear credentials
+  create [name]            Create a new app scaffold
   deploy [path]            Deploy an app (reads type from truffile.yaml)
   validate [path]          Validate app config and files
   delete                   Delete installed apps from device
@@ -125,6 +126,7 @@ Commands:
 Examples:
   truffile scan                # find devices on network
   truffile connect truffle-6272
+  truffile create my-app       # scaffold a new app
   truffile deploy ./my-app
   truffile deploy --dry-run ./my-app
   truffile deploy              # uses current directory
