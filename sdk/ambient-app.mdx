@@ -393,29 +393,17 @@ for tool in tools:
     print(tool.name, "-", tool.description)
 ```
 
-### Lease behavior
+### Always close the connection
 
-When you call `ctx.connect_foreground()`, the runtime spins up (or keeps alive) your foreground container and gives your background a **lease**. The defaults:
-
-| | Default | Meaning |
-|---|---|---|
-| Lease duration | 300s (5 minutes) | How long the foreground stays up for this background cycle. |
-| Auto-refresh | every 4 minutes (80% of lease) | `ForegroundConnection` refreshes the lease in the background so long-running cycles don't lose the connection. |
-| Connect retry | 10 × 0.5s | If the foreground container is still booting, `connect_foreground()` retries until it's ready. |
-| Release | on `close()` | When you call `fg.close()`, the lease is released and the foreground can be shut down by the runtime. |
-
-You can override the lease when you connect:
+Wrap your foreground calls in a `try` / `finally` and call `await fg.close()` when you're done — even on exceptions. Skipping this leaves the foreground container held open longer than it needs to be.
 
 ```python
-# grant a 15-minute lease for a heavier cycle
-fg = await ctx.connect_foreground(lease_duration_seconds=900)
+fg = await ctx.connect_foreground()
+try:
+    ...
+finally:
+    await fg.close()
 ```
-
-Pick a duration that comfortably covers your cycle. If the lease expires before you close, the auto-refresh machinery tries to keep it alive; if that also fails, your next `call_tool` will error.
-
-<Warning>
-If your cycle crashes between opening and closing, the lease stays held until the runtime's idle timeout kicks in (5 min + 15s in the worst case). Wrap all foreground calls in a `try` / `finally` so `fg.close()` runs even on exceptions.
-</Warning>
 
 ### Using this with `BackgroundWorkerApp`
 
