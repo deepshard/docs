@@ -1,197 +1,305 @@
 ---
 title: Build a Foreground App
-description: "Give your Truffle MCP tools it can call on demand"
+description: "Expose MCP tools the Truffle agent can call on demand"
 ---
 
-Foreground apps are MCP servers. They expose tools that Truffle can call during active tasks.
-
-<Warning>
-Foreground apps on Truffle must serve MCP over `streamable-http`. `stdio` transport is not supported for deployed foreground apps.
-</Warning>
-
-If you are new to MCP itself, read the protocol docs here:
-
-- [Model Context Protocol Documentation](https://modelcontextprotocol.io/docs)
+Foreground apps are MCP servers that give the Truffle agent callable tools. You subclass `ForegroundApp`, register tools with a decorator, and call `app.run()`.
 
 <Note>
-Truffle foreground apps currently support the MCP tool surface (tool registration and tool invocation over streamable HTTP). Full MCP features are still work in progress
+Foreground apps serve MCP over **streamable HTTP**. `stdio` transport is not supported for deployed apps.
+
+If you're new to MCP, start with the [protocol docs](https://modelcontextprotocol.io/docs).
 </Note>
 
-### Coming Soon
-
-- Additional MCP assets: resources, prompts, files, and skills
-- Tool icons and richer tool metadata
-- Read-only tool semantics
-- Tool-driven user elicitation (requesting user input from a tool flow)
-- Expanded authentication and session handling for stateful MCP servers
-
 ---
 
-## What We Are Building
+## Minimal example
 
-This walkthrough uses the Kalshi foreground service:
-
-- source: [`app-store/kalshi/kalshi_foreground.py`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/kalshi_foreground.py)
-- config: [`app-store/kalshi/truffile.yaml`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/truffile.yaml) (`metadata.foreground.process`)
-- app source repo: [`app-store/kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi)
-
-It exposes callable tools like:
-
-- `get_markets`
-- `get_market`
-- `get_positions`
-- `create_order`
-- `cancel_order`
-- `kalshi_health`
-
-These are regular Python functions decorated as MCP tools with clear descriptions and typed parameters.
-
----
-
-## Step 1: Foreground Config in `truffile.yaml`
-
-```yaml
-metadata:
-  name: Kalshi
-  bundle_id: org.deepshard.kalshi
-  description: |
-    Have Truffle trade and monitor Kalshi prediction markets for you.
-  icon_file: ./icon.png
-
-  foreground:
-    process:
-      cmd:
-        - python
-        - kalshi_foreground.py
-      working_directory: /
-      environment:
-        PYTHONUNBUFFERED: "1"
-        KALSHI_API_KEY: "REPLACE_WITH_KALSHI_API_KEY"
-        KALSHI_PRIVATE_KEY: |
-          REPLACE_WITH_KALSHI_PRIVATE_KEY_PEM
-
-steps:
-  - name: Install dependencies
-    type: bash
-    run: |
-      apk add --no-cache gcc musl-dev libffi-dev openssl-dev
-      pip install --no-cache-dir "httpx>=0.27.0" "cryptography>=42.0.0"
-  - name: Copy application files
-    type: files
-    files:
-      - source: ./config.py
-        destination: ./config.py
-      - source: ./client.py
-        destination: ./client.py
-      - source: ./kalshi_foreground.py
-        destination: ./kalshi_foreground.py
-```
-
-Use literal block style (`|`) for multiline secrets like PEM keys.
-
----
-
-## Step 2: MCP Server Bootstrap Pattern
-
-Kalshi foreground uses this runtime pattern:
+A complete, working foreground app that exposes one tool:
 
 ```python
-from app_runtime.mcp import create_mcp_server, run_mcp_server
+# my_app_foreground.py
+from __future__ import annotations
 
-mcp = create_mcp_server("kalshi")
+import atexit
+import httpx
 
-@mcp.tool("get_market", description="Get details for a specific market ticker.")
-async def get_market(ticker: str) -> dict:
+from truffile.app_runtime import ForegroundApp, ToolSpec, ok, err
+
+
+class MyApp(ForegroundApp):
+    def __init__(self) -> None:
+        super().__init__("myapp", logger_name="myapp.foreground")
+        self._http = httpx.AsyncClient(timeout=30.0)
+        self._register_tools()
+
+    def _register_tools(self) -> None:
+        @self.tool(
+            ToolSpec(
+                name="search_web",
+                description=(
+                    "Search the web and return the top results. "
+                    "Use this when the user asks about current events or recent information."
+                ),
+                icon="magnifying-glass",
+            )
+        )
+        async def search_web(query: str, limit: int = 5) -> dict:
+            """Search the web for `query` and return up to `limit` results."""
+            if not query.strip():
+                return err("query is required")
+            limit = max(1, min(limit, 20))
+            try:
+                response = await self._http.get(
+                    "https://api.example.com/search",
+                    params={"q": query, "n": limit},
+                )
+                response.raise_for_status()
+                return ok(f"Found {limit} results", results=response.json())
+            except httpx.HTTPStatusError as exc:
+                return err(f"HTTP {exc.response.status_code}", status_code=exc.response.status_code)
+
+    async def aclose(self) -> None:
+        await self._http.aclose()
+
+
+app = MyApp()
+
+
+def _cleanup() -> None:
+    try:
+        import asyncio
+        asyncio.run(app.aclose())
+    except Exception:
+        pass
+
+
+atexit.register(_cleanup)
+
+
+if __name__ == "__main__":
+    app.run()
+```
+
+That's the whole pattern. The rest of this page explains each piece.
+
+---
+
+## The `ForegroundApp` class
+
+Subclass `ForegroundApp` and call `super().__init__(name, logger_name=...)`. The constructor sets up the MCP server machinery, your logger (`self.logger`), and the internal tool registry.
+
+```python
+class MyApp(ForegroundApp):
+    def __init__(self) -> None:
+        super().__init__("myapp", logger_name="myapp.foreground")
+```
+
+- `name` — a short identifier for your app, used in MCP server metadata.
+- `logger_name` — optional; defaults to the app name. Use a namespaced logger so your logs are distinguishable in the runtime.
+
+---
+
+## Registering tools
+
+Tools are async functions registered via the `@self.tool(...)` decorator. The decorator takes a `ToolSpec` with the tool's name, description, and icon:
+
+```python
+from truffile.app_runtime import ToolSpec
+
+@self.tool(
+    ToolSpec(
+        name="get_repo",
+        description=(
+            "Fetch a GitHub repository's metadata by owner and repo name. "
+            "Returns stars, default branch, and description."
+        ),
+        icon="github-logo",
+        readonly=True,
+    )
+)
+async def get_repo(owner: str, repo: str) -> dict:
     ...
-
-def main() -> None:
-    run_mcp_server(mcp, logger)
 ```
 
-`create_mcp_server(...)` and `run_mcp_server(...)` are the Truffle app runtime wrappers used by foreground apps.
+**Fields on `ToolSpec`:**
+
+| Field | Meaning |
+|-------|---------|
+| `name` | The tool name the model sees. Use `snake_case`. |
+| `description` | Plain English. The model uses this to decide when to call the tool — make it explicit. |
+| `icon` | Either a full URL or a [Phosphor icon name](https://phosphoricons.com/) (e.g. `"search"`, `"github-logo"`). |
+| `readonly` | Set `True` for tools that only read data. Optional. |
+
+### Icons
+
+Passing a name like `"search"` is equivalent to calling `phosphor_icon_url("search")` — the SDK turns it into a Phosphor SVG URL. If you want a custom icon, pass the full URL instead:
+
+```python
+ToolSpec(name="...", description="...", icon="https://example.com/icons/myicon.svg")
+```
+
+### Type hints are your tool schema
+
+The tool function's **type hints** become the MCP tool's input schema. Keep them concrete:
+
+```python
+async def search(query: str, limit: int = 5, include_archived: bool = False) -> dict:
+    ...
+```
+
+Supported types: `str`, `int`, `float`, `bool`, `list[...]`, `dict[...]`, `Optional[...]`. Give every parameter a sensible default where possible — the model can call the tool with fewer arguments if you do.
 
 ---
 
-## Step 3: Tool Design Guidance (from Kalshi)
+## Returning results: `ok` / `err`
 
-Kalshi tools follow a useful pattern worth copying:
+Every tool should return a dict. Use the `ok()` and `err()` helpers so your responses have a consistent shape:
 
-1. Validate inputs early (`limit`, `depth`, enum-like args).
-2. Return structured success/error payloads, not plain strings.
-3. Keep tool descriptions explicit so the model can route correctly.
-4. Report auth/runtime issues using runtime error reporting where needed.
+```python
+from truffile.app_runtime import ok, err
 
-Example tools in Kalshi:
+return ok("Found 3 results", results=[...], count=3)
+# → {"status": "success", "message": "Found 3 results", "results": [...], "count": 3}
 
-- read path: `get_markets`, `get_market`, `get_orderbook`, `get_positions`
-- write path: `create_order`, `cancel_order`, `batch_cancel_orders`
-- health path: `kalshi_health`
+return err("Rate limit exceeded", retry_after=60)
+# → {"status": "error", "message": "Rate limit exceeded", "retry_after": 60}
+```
+
+Any keyword arguments are merged into the dict. The agent reads `message` when narrating what the tool did.
 
 ---
 
-## Step 4: Test MCP Tools in Chat Before Deploy
+## Error handling
 
-You can test your MCP server with Truffle chat before shipping app changes.
+For errors you expect (bad inputs, HTTP failures, rate limits), return `err(...)`. For authentication failures — where the user needs to reinstall or refresh credentials — raise `AppAuthError`:
 
-1. Start chat:
+```python
+from truffile.app_runtime import AppAuthError, AppRuntimeFailure, err
 
-```bash
-truffile chat
+async def list_issues(owner: str, repo: str) -> dict:
+    try:
+        response = await self._http.get(f"/repos/{owner}/{repo}/issues")
+        response.raise_for_status()
+        return ok("Listed issues", issues=response.json())
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in (401, 403):
+            raise AppAuthError("GitHub token is invalid or lacks permissions") from exc
+        return err(f"GitHub returned HTTP {exc.response.status_code}")
+    except httpx.HTTPError as exc:
+        raise AppRuntimeFailure(f"GitHub request failed: {exc}") from exc
 ```
 
-2. Connect your MCP endpoint:
+- **`AppAuthError`** — the runtime classifies this as an auth problem and flags the app as needing user intervention. Use it for 401/403 responses, expired tokens, or missing credentials.
+- **`AppRuntimeFailure`** — for generic runtime issues you want to propagate instead of returning as a soft error.
+- **Returning `err(...)`** — for expected errors the agent should see and potentially recover from (bad user input, rate limits, upstream 5xx, etc.).
 
-- local MCP example:
-  - `/mcp connect http://127.0.0.1:8000/mcp`
-- hosted MCP example (Exa):
-  - `/mcp connect https://mcp.exa.ai/mcp?exaApiKey=<EXA_API_KEY>&tools=web_search_exa,web_search_advanced_exa,get_code_context_exa,crawling_exa,company_research_exa,people_search_exa,deep_researcher_start,deep_researcher_check`
+---
 
-3. Verify tool discovery:
+## Tool design guidance
 
-- `/mcp tools`
+A few things we've learned from building the reference apps:
 
-4. Run a real tool-routing prompt:
+1. **Validate inputs early.** If the caller passes `limit=99999`, clamp it. If an enum arg is invalid, return `err(...)` with the valid values.
+2. **Return structured data, not prose.** The agent is much better at parsing `ok("Found 3 PRs", prs=[...])` than `ok("I found 3 pull requests: #1, #2, #3")`.
+3. **Write descriptions the model can route on.** "Search X for Y. Use this when Z." Describe *when* to use the tool, not just *what* it does.
+4. **Keep one concept per tool.** `get_market` and `create_order` are better than a single `market_op` with a `mode` arg.
+5. **Name parameters clearly.** `ticker` not `t`, `include_text` not `text`.
 
-- `use the company research exa tool to find me information about SpaceX`
+---
 
-This is the fastest way to validate tool schemas/descriptions and model routing behavior before deploying your foreground app package.
+## Testing with `truffile infer`
+
+You can point the inference REPL at your local MCP server and exercise it end-to-end before deploying.
+
+1. Start your app locally:
+
+   ```bash
+   python my_app_foreground.py
+   ```
+
+   It'll listen on `http://127.0.0.1:8000/mcp` by default.
+
+2. In another terminal, open the infer REPL:
+
+   ```bash
+   truffile infer
+   ```
+
+3. Connect to your MCP server and list the tools:
+
+   ```
+   > /mcp connect http://127.0.0.1:8000/mcp
+   /mcp connect ✓ http://127.0.0.1:8000/mcp (2 tools)
+
+   > /mcp tools
+   /mcp tools search_web, get_repo
+   ```
+
+4. Run a real prompt that should trigger one of your tools:
+
+   ```
+   > use the search_web tool to find recent news about SpaceX
+   ```
+
+This is the fastest way to check that your tool descriptions actually route correctly before you deploy.
 
 <Warning>
-Do not commit or publish real API keys in docs, screenshots, logs, or recordings.
+Never commit real API keys in docs, screenshots, logs, or recordings.
 </Warning>
 
 ---
 
-## Step 5: Connection Lifecycle and Cleanup
+## Cleanup on shutdown
 
-Kalshi foreground keeps a shared API client and closes it on shutdown:
+Close any HTTP clients, database connections, or subprocesses on exit:
 
-- `atexit.register(_cleanup)`
-- `_cleanup()` calls `await _api.close()`
+```python
+import atexit
 
-This matters in production. Explicitly closing connections before process exit prevents shutdown instability and reduces the chance of container runtime errors.
+def _cleanup() -> None:
+    try:
+        # close sync clients directly, async clients via asyncio.run
+        client.close()
+    except Exception:
+        pass
 
----
-
-## Step 6: Deploy and Test
-
-```bash
-truffile validate ./app-store/kalshi
-truffile deploy --dry-run ./app-store/kalshi
-truffile deploy ./app-store/kalshi
+atexit.register(_cleanup)
 ```
 
-After deploy, run a task that requires market data or order actions and verify Truffle is invoking the foreground tools.
+Skipping this is the #1 cause of flaky redeploys and container runtime crashes.
 
 ---
 
-## When to Use Foreground
+## Deploy
 
-Use foreground apps when you need:
+```bash
+truffile validate ./my-app
+truffile deploy --dry-run ./my-app
+truffile deploy ./my-app
+```
 
-- request/response tools invoked during a task
-- deterministic API integrations the model can call on demand
-- low-latency, operation-style behaviors (search, lookup, actions)
+After deploy, trigger a task that should use one of your tools and confirm the agent calls it.
 
-## Note
-- Remember tool descriptions are very important, follow good practice and add tool descriptions with explination fo each parameter and example usage, this helps your Truffle in calling tools!
+---
+
+## When to build a foreground app
+
+Build a foreground app when you need:
+
+- **Request/response tools** the agent calls during a task (search, fetch, lookup, CRUD operations)
+- **Deterministic API integrations** the model should reach for in specific situations
+- **Action-style behaviors** (post, create, cancel, trigger)
+
+If instead you want something that runs on a schedule and feeds context to the agent *without* the user asking, you want a [background app](/sdk/ambient-app) — or a hybrid app that has both.
+
+---
+
+## Reference apps
+
+| App | What it shows |
+|-----|--------------|
+| [`exa`](https://github.com/deepshard/truffile/tree/main/app-store/exa) | Clean minimal foreground app. API key auth via a `text` step. |
+| [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) | Foreground proxy to a remote MCP server. Access token via a `text` step. |
+| [`kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi) | Multi-tool foreground app with signed request auth. |
+| [`notion`](https://github.com/deepshard/truffile/tree/main/app-store/notion) | Foreground app that manages a child MCP subprocess (`@notionhq/notion-mcp-server`). |

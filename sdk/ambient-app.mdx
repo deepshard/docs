@@ -1,165 +1,402 @@
 ---
 title: Build a Background App
-description: "Create a scheduled app that submits context to agent on your Truffle"
+description: "Run on a schedule and submit context to the proactive agent on your Truffle"
 ---
 
-Background apps run on a schedule and submit context to Truffle's proactive agent.
+Background apps run on a schedule and feed **context** into Truffle's proactive agent. Foreground apps are callable tools; background apps are context producers.
 
-To put it simply:
+You subclass `BackgroundWorkerApp`, implement a handful of methods, and call `app.main()`. The runtime handles the schedule, retries, and the gRPC plumbing.
 
-- foreground apps are callable tools
-- background apps are context producers
-
-The richer and cleaner your background submissions are, the better proactive behavior you should expect, using cool things like metrics for the model to decide importance on, formatting for submission etc matter a lot here!
+> The richer and more concrete your submissions are, the better proactive behavior you'll get. "FED-RATE-SEP moved up 12c (was 41c, now 53c)" routes much better than "market alert".
 
 ---
 
-## What We're Building
+## The worker + app split
 
-This walkthrough uses Kalshi app as an example specifcially the background functionality:
+Reference apps consistently keep the *work* (API calls, parsing, diffing) in a plain `Worker` class, and the *SDK wiring* in a small `BackgroundWorkerApp` subclass. This makes the worker easy to unit test without touching the runtime.
 
-- source: [`app-store/kalshi/kalshi_background.py`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/kalshi_background.py)
-- worker: [`app-store/kalshi/bg_worker.py`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/bg_worker.py)
-- config: [`app-store/kalshi/truffile.yaml`](https://github.com/deepshard/truffile/blob/main/app-store/kalshi/truffile.yaml) (`metadata.background`)
-- app source repo: [`app-store/kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi)
-
-Kalshi background generates:
-
-- portfolio summaries
-- price movement alerts
-- settlement alerts
-- order status updates
-- feed/event digests
-
-and submits each item with explicit priority. feel free to do your own version!
+```
+my_app/
+├── bg_worker.py           # plain class: verify(), run_cycle() → CycleResult
+├── my_app_background.py   # BackgroundWorkerApp subclass + app.main()
+└── truffile.yaml
+```
 
 ---
 
-## Step 1: Background Config in `truffile.yaml`
+## Minimal example
+
+### The worker (`bg_worker.py`)
+
+The worker knows nothing about the SDK. It returns a `CycleResult` dataclass describing what happened.
+
+```python
+# bg_worker.py
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+
+import httpx
+
+
+@dataclass(frozen=True)
+class CycleResult:
+    summary: str | None = None
+    uris: tuple[str, ...] = ()
+    priority: int = 0
+    changed: bool = False
+    auth_error: str | None = None
+    error: str | None = None
+
+
+class MyBackgroundWorker:
+    def __init__(self) -> None:
+        self._http = httpx.Client(timeout=30.0)
+        self._last_fingerprint: str | None = None
+
+    def close(self) -> None:
+        try:
+            self._http.close()
+        except Exception:
+            pass
+
+    def verify(self) -> tuple[bool, str]:
+        """Called by `truffile deploy` (and `--verify`) to check credentials."""
+        token = os.getenv("MY_APP_ACCESS_TOKEN", "").strip()
+        if not token:
+            return False, "MY_APP_ACCESS_TOKEN is not set"
+        try:
+            response = self._http.get(
+                "https://api.example.com/me",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if response.status_code in (401, 403):
+                return False, "MY_APP_ACCESS_TOKEN is invalid or expired"
+            response.raise_for_status()
+            user = response.json().get("login", "unknown")
+            return True, f"Verified as @{user}"
+        except Exception as exc:
+            return False, f"Verify request failed: {exc}"
+
+    def run_cycle(self) -> CycleResult:
+        token = os.getenv("MY_APP_ACCESS_TOKEN", "").strip()
+        if not token:
+            return CycleResult(auth_error="MY_APP_ACCESS_TOKEN is not set")
+        try:
+            response = self._http.get(
+                "https://api.example.com/activity",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if response.status_code in (401, 403):
+                return CycleResult(auth_error=f"API returned {response.status_code}")
+            response.raise_for_status()
+            items = response.json().get("items", [])
+        except Exception as exc:
+            return CycleResult(error=str(exc))
+
+        # Skip if nothing has changed since the last cycle.
+        fingerprint = repr(items)
+        if fingerprint == self._last_fingerprint:
+            return CycleResult(changed=False)
+        self._last_fingerprint = fingerprint
+
+        if not items:
+            return CycleResult(changed=False)
+
+        summary = "\n".join(f"- {item['title']} ({item['url']})" for item in items[:5])
+        uris = tuple(item["url"] for item in items[:5])
+        return CycleResult(summary=summary, uris=uris, priority=1, changed=True)
+```
+
+### The app (`my_app_background.py`)
+
+```python
+# my_app_background.py
+from __future__ import annotations
+
+import atexit
+
+from truffile.app_runtime import BackgroundWorkerApp
+
+from bg_worker import CycleResult, MyBackgroundWorker
+
+
+class MyBackgroundApp(BackgroundWorkerApp[MyBackgroundWorker, CycleResult]):
+    def __init__(self) -> None:
+        super().__init__("myapp", logger_name="myapp.background")
+
+    def build_worker(self) -> MyBackgroundWorker:
+        return MyBackgroundWorker()
+
+    def verify_worker(self, worker: MyBackgroundWorker) -> tuple[bool, str]:
+        return worker.verify()
+
+    def run_cycle(self, worker: MyBackgroundWorker) -> CycleResult:
+        return worker.run_cycle()
+
+    def handle_cycle_result(self, ctx, result: CycleResult) -> None:
+        if result.auth_error:
+            self.report_auth_failure(ctx, result.auth_error)
+            return
+
+        self.reset_auth_failures()
+
+        if result.error:
+            self.logger.error("Cycle failed: %s", result.error)
+            return
+
+        if not result.changed or not result.summary:
+            return
+
+        self.submit_text(
+            ctx,
+            content=result.summary,
+            uris=result.uris,
+            priority=result.priority,
+        )
+
+
+app = MyBackgroundApp()
+
+
+def _cleanup() -> None:
+    worker = getattr(app, "_worker", None)
+    if worker is not None:
+        close = getattr(worker, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception:
+                pass
+
+
+atexit.register(_cleanup)
+
+
+if __name__ == "__main__":
+    app.main()
+```
+
+That's the whole pattern. Everything below explains each method.
+
+---
+
+## The `BackgroundWorkerApp` base class
+
+Subclass `BackgroundWorkerApp[WorkerT, ResultT]` with the two types of your worker and your cycle result. Call `super().__init__(name, logger_name=...)`.
+
+You implement four methods:
+
+| Method | What it does |
+|--------|-------------|
+| `build_worker()` | Returns an instance of your worker. Called once and cached. |
+| `verify_worker(worker)` | Returns `(ok, message)` — used during deploy and `--verify`. |
+| `run_cycle(worker)` | Runs one iteration. Returns your cycle result. |
+| `handle_cycle_result(ctx, result)` | Inspects the result and decides whether to submit context or report an error. |
+
+And you get these helpers for free:
+
+| Helper | What it does |
+|--------|-------------|
+| `self.submit_text(ctx, content=..., uris=..., priority=...)` | Queue text context for the proactive agent. |
+| `self.report_auth_failure(ctx, description)` | Dedup auth failures; after `AUTH_FAILURE_THRESHOLD` (default 3) consecutive failures, reports to the runtime with `needs_intervention=True`. |
+| `self.reset_auth_failures()` | Clear the counter after a successful cycle. |
+| `self.logger` | A pre-configured logger. |
+
+---
+
+## `app.main()` and `--verify`
+
+`app.main()` is the entry point:
+
+```python
+if __name__ == "__main__":
+    app.main()
+```
+
+It handles two modes automatically:
+
+- **Normal mode** — starts the background loop and blocks. The runtime calls `run_cycle()` on each schedule tick.
+- **`--verify` mode** — when `--verify` is in `sys.argv`, `main()` calls `verify_worker()`, prints the result, and exits with `0` (ok) or `1` (failed). `truffile deploy` uses this to check credentials immediately after your `text` step collects them:
+
+  ```yaml
+  - name: Configure access token
+    type: text
+    fields:
+      - name: my_app_access_token
+        label: Access Token
+        type: password
+        env: MY_APP_ACCESS_TOKEN
+    validator:
+      type: bash
+      run: python ./my_app_background.py --verify
+  ```
+
+---
+
+## Handling cycle results
+
+`handle_cycle_result(ctx, result)` is where you decide what to do with each cycle's output. The pattern is roughly:
+
+1. If it's an **auth error**, report it (deduped) and return.
+2. Otherwise, reset the auth failure counter.
+3. If it's a **runtime error**, log it and return. (The runtime will still retry next cycle.)
+4. If nothing changed, return without submitting.
+5. Otherwise, call `submit_text(...)` with a well-formed context string.
+
+```python
+def handle_cycle_result(self, ctx, result: CycleResult) -> None:
+    if result.auth_error:
+        self.report_auth_failure(ctx, result.auth_error)
+        return
+    self.reset_auth_failures()
+    if result.error:
+        self.logger.error("Cycle failed: %s", result.error)
+        return
+    if not result.changed or not result.summary:
+        return
+    self.submit_text(
+        ctx,
+        content=result.summary,
+        uris=result.uris,
+        priority=result.priority,
+    )
+```
+
+### Auth failure dedup
+
+Background apps poll often. If a token goes bad, you don't want a noisy failure report every 30 minutes — you want one clear report once the situation is clearly stuck.
+
+`self.report_auth_failure(ctx, description)` handles this for you:
+
+- Logs a warning on the first few failures
+- After `AUTH_FAILURE_THRESHOLD` (default: 3) consecutive failures, reports to the runtime with `needs_intervention=True` so the user is prompted
+- Subsequent failures stay suppressed until a successful cycle calls `self.reset_auth_failures()`
+
+You can override `AUTH_FAILURE_THRESHOLD` on your subclass if 3 is too few or too many.
+
+---
+
+## Writing good context submissions
+
+The quality of your background context *directly* affects how proactive behavior feels. Rich, concrete items win every time.
+
+**Weak:**
+> Market alert
+
+**Strong:**
+> Price alert: FED-RATE-SEP moved up 12c (was 41c, now 53c)
+> Related: https://kalshi.com/markets/FED-RATE-SEP
+
+**Weak:**
+> New PRs in your repos
+
+**Strong:**
+> @octocat opened PR #342 in truffle-ai/pyfw-codex: "Fix mDNS timeout on retry"
+> 2 files changed, +18/-4. Requested reviews: @alice, @bob
+> https://github.com/truffle-ai/pyfw-codex/pull/342
+
+A few guidelines:
+
+- **Include the entities.** Names, tickers, IDs, usernames, repo paths, order numbers.
+- **Include numbers with context.** `$12k` alone is useless; `$12k (was $8.4k yesterday)` is actionable.
+- **Include links.** Pass them in `uris=(...)` so the agent can open them if it decides to act.
+- **Pick priority honestly.** Default priority is fine for most things. Bump it for genuine urgency (alerts, settlements, revoked tokens).
+- **Don't spam.** Use a fingerprint or diff to skip cycles where nothing meaningfully changed — return a `CycleResult` with `changed=False` and don't submit.
+
+<Note>
+Background context can trigger action in *any* app, not just yours. If an Instagram message about an Amazon order lands in the proactive agent's context, Truffle might use your Amazon app to add the item to cart. Write submissions with that in mind.
+</Note>
+
+---
+
+## Schedule configuration
+
+The `default_schedule` block in `truffile.yaml` controls how often your cycle runs:
 
 ```yaml
 metadata:
-  name: Kalshi
-  bundle_id: org.deepshard.kalshi
-  description: |
-    Have Truffle trade and monitor Kalshi prediction markets for you.
-  icon_file: ./icon.png
-
   background:
     process:
-      cmd:
-        - python
-        - kalshi_background.py
+      cmd: ["python", "my_app_background.py"]
       working_directory: /
       environment:
         PYTHONUNBUFFERED: "1"
-        KALSHI_API_KEY: "REPLACE_WITH_KALSHI_API_KEY"
-        KALSHI_PRIVATE_KEY: |
-          REPLACE_WITH_KALSHI_PRIVATE_KEY_PEM
     default_schedule:
       type: interval
       interval:
         duration: 30m
-        schedule:
-          daily_window: "00:00-23:59"
-
-steps:
-  - name: Install dependencies
-    type: bash
-    run: |
-      apk add --no-cache gcc musl-dev libffi-dev openssl-dev
-      pip install --no-cache-dir "httpx>=0.27.0" "cryptography>=42.0.0"
-  - name: Copy application files
-    type: files
-    files:
-      - source: ./config.py
-        destination: ./config.py
-      - source: ./client.py
-        destination: ./client.py
-      - source: ./bg_worker.py
-        destination: ./bg_worker.py
-      - source: ./kalshi_background.py
-        destination: ./kalshi_background.py
+        daily_window: "00:00-23:59"
 ```
+
+- **`duration`** — interval between runs (`5m`, `30m`, `1h`, etc.)
+- **`daily_window`** — optional time window to respect (e.g. `"09:00-18:00"` to only run during business hours)
+
+<Tip>
+During development, set `duration: 1m` so you can see results quickly. Bump it back up before shipping.
+</Tip>
 
 ---
 
-## Step 2: Runtime Pattern
+## Cleanup on shutdown
 
-Kalshi background uses the app runtime background loop (coming soon but for now you can use the example apps to see how to use it for your apps!):
+Close your worker's network clients on exit:
 
 ```python
-from app_runtime.background import BackgroundRunContext, run_background
+import atexit
 
-def kalshi_ambient(ctx: BackgroundRunContext) -> None:
-    ...
-    ctx.bg.submit_context(content=content, uris=[], priority=priority)
+def _cleanup() -> None:
+    worker = getattr(app, "_worker", None)
+    if worker is not None:
+        close = getattr(worker, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception:
+                pass
 
-if __name__ == "__main__":
-    run_background(kalshi_ambient)
+atexit.register(_cleanup)
 ```
 
-Core idea:
-
-1. gather external state (APIs, events, account state)
-2. create context messages with enough detail to be actionable
-3. submit with priority (`LOW`, `DEFAULT`, `HIGH`) based on urgency
+This isn't optional. Leaving HTTP connections and other resources open at process exit is the most common source of flaky redeploys.
 
 ---
 
-## Step 3: Submit Rich Context (Not Generic Text)
-
-From Kalshi, stronger context items include concrete fields:
-
-- ticker and title
-- absolute and relative price change
-- before/after values
-- settlement result and revenue impact
-- order IDs and status change
-
-Example style:
-
-```text
-Price alert: FED-RATE-SEP moved up 12c (was 41c, now 53c)
-```
-
-This is much better for proactivity than broad summaries without entity/time/value details.
-
----
-
-## Step 4: Reliability and Cleanup
-
-Kalshi background explicitly closes resources on shutdown (This is important and needs to be done for your apps! Your apps will fail at runtime otherwise):
-
-- `atexit.register(_cleanup)` in `kalshi_background.py`
-- `_cleanup()` closes `KalshiBackgroundWorker` client and event loop
-- worker itself exposes `close()` and wraps API failures
-
-Do the same in your app. Leaving connections open at shutdown is a common source of flaky reruns and container instability.
-
----
-
-## Step 5: Deploy and Verify
+## Deploy and verify
 
 ```bash
-truffile validate ./app-store/kalshi
-truffile deploy --dry-run ./app-store/kalshi
-truffile deploy ./app-store/kalshi
+truffile validate ./my-app
+truffile deploy --dry-run ./my-app
+truffile deploy ./my-app
 ```
 
-Then verify:
+Once deployed:
 
-- scheduled runs execute at expected interval/window (Tip: Keep interval small when testing to see results earlier, you can adjust it and redeploy later when you know it works!)
-- context submissions are visible in runtime logs, right now there is not a away for you to go and watch runtime logs for your background apps, we will be adding this feature soon to the sdk. Till then please make sure you follow the example app templates!
+- Your `run_cycle()` will be invoked on the configured interval
+- `handle_cycle_result()` decides what to submit
+- `submit_text(...)` calls land in the proactive agent's context
+- Auth failures past the threshold surface as "needs intervention" in the app UI
 
 ---
 
-## When to Use Background
+## When to build a background app
 
-Use background apps when you need:
+Use a background app when you want:
 
-- periodic polling/monitoring
-- context emission for proactive behavior, you would like Truffle to take an action! (Do not be restrained in thinking that a background app can only influence actions for that app only, if I get an instagram message regarding an amazon order, Truffle can use that to do an action of adding said item to my cart!)
-- domain-specific event digestion over time
+- **Periodic polling** of an external system (new messages, new PRs, new fills, new feed items)
+- **Monitoring** with thresholds (price alerts, rate changes, error budgets)
+- **Digest generation** (daily/weekly/hourly summaries)
+- **Context emission** that feeds proactive actions in other apps
 
-If your app also needs callable tools, keep both blocks in one app (`metadata.foreground` + `metadata.background`) as shown in Kalshi.
+If you *also* need callable tools, add a `foreground` section to the same `truffile.yaml` — it becomes a hybrid app. The [GitHub](https://github.com/deepshard/truffile/tree/main/app-store/github) and [Kalshi](https://github.com/deepshard/truffile/tree/main/app-store/kalshi) apps do exactly this.
+
+---
+
+## Reference apps
+
+| App | What it shows |
+|-----|--------------|
+| [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) | Full worker + app split. Auth failure dedup, fingerprint-based change detection, hybrid with a foreground MCP proxy. |
+| [`reddit`](https://github.com/deepshard/truffile/tree/main/app-store/reddit) | Background-only, no auth. Pure configuration-driven. |
+| [`kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi) | Hybrid. Portfolio monitoring, price alerts, settlement events — all with rich context formatting. |

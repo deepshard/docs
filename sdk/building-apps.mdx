@@ -1,137 +1,202 @@
 ---
-title: What are Truffle Apps?
+title: Building Truffle Apps
+description: "An overview of how Truffle apps work and how to build your own"
 ---
 
-## What Are Truffle Apps?
+A Truffle app is a containerized Python program that runs on your Truffle and extends what the on-device agent can do. Apps come in three shapes:
 
-Truffle apps are containerized programs that run on your Truffle and extend what the agent on your Truffle can do.
+| Shape | When it runs | What it does |
+|-------|--------------|--------------|
+| **Foreground** | On demand | Exposes MCP tools the agent can call during tasks |
+| **Background** | On a schedule | Submits context to the proactive agent |
+| **Hybrid** | On demand + on a schedule | Both: tools *and* scheduled context |
 
-There are three app shapes you can build today:
-
-| Type | When It Runs | What It Does |
-|------|--------------|--------------|
-| **Foreground** | On demand | Exposes MCP tools (served over `streamable-http`) the agent can call during tasks |
-| **Background** | On schedule | Submits context to the proactive agent |
-| **Both** | On demand + schedule | Combines MCP tools and scheduled context submission |
+You pick the shape by including a `foreground`, `background`, or both sections in your `truffile.yaml`.
 
 <CardGroup cols={2}>
-  <Card title="Kalshi Example (FG + BG)" icon="github" href="https://github.com/deepshard/truffile/tree/main/app-store/kalshi">
-    Full example app using both foreground tools and background scheduling.
+  <Card title="GitHub (hybrid)" icon="github" href="https://github.com/deepshard/truffile/tree/main/app-store/github">
+    Foreground proxy to the GitHub MCP plus a background worker that summarizes your activity feed.
   </Card>
-  <Card title="Reddit Example (BG)" icon="github" href="https://github.com/deepshard/truffile/tree/main/app-store/reddit">
-    Background-only example that submits periodic context.
+  <Card title="Exa (foreground only)" icon="magnifying-glass" href="https://github.com/deepshard/truffile/tree/main/app-store/exa">
+    A small, clean foreground app that exposes Exa's web research tools.
+  </Card>
+  <Card title="Reddit (background only)" icon="reddit" href="https://github.com/deepshard/truffile/tree/main/app-store/reddit">
+    Scheduled digest of your subreddit feeds — no auth, pure configuration.
+  </Card>
+  <Card title="Kalshi (hybrid)" icon="chart-line" href="https://github.com/deepshard/truffile/tree/main/app-store/kalshi">
+    Trades prediction markets via foreground tools and watches positions from the background.
   </Card>
 </CardGroup>
 
 ---
 
-## Create an App Scaffold
+## The SDK import surface
 
-Start here when creating a new app from scratch:
+App code imports everything it needs from **`truffile.app_runtime`**. This is the module that ships with the `truffile` package when you `pip install truffile`, and it's what every app in `app-store/` uses.
 
-```bash
-truffile create
+```python
+from truffile.app_runtime import (
+    ForegroundApp,
+    BackgroundWorkerApp,
+    ToolSpec,
+    Submission,
+    ok,
+    err,
+    phosphor_icon_url,
+    AppAuthError,
+    AppRuntimeFailure,
+)
 ```
 
-Interactive flow:
+<Note>
+You won't find `truffile/app_runtime/` if you browse the [truffile repo](https://github.com/deepshard/truffile) — it's gitignored. The source ships with the installed package, so once you `pip install truffile` it's importable in your app code. If you want to read the implementation, look in your venv at `.venv/lib/python*/site-packages/truffile/app_runtime/`.
+</Note>
 
-```text
-? App name: yo
-? Base path [/home/truffle/abd_work/pyfw]: .
-✓ Created app scaffold: /home/truffle/abd_work/pyfw/yo
-  Files:
-  → truffile.yaml
-  → yo_foreground.py
-  → yo_background.py
-  → icon.png
+There are two other entry points that import the same names:
 
-  Next: truffile validate /home/truffle/abd_work/pyfw/yo
-```
+- `from truffile.sdk import ...` — a curated re-export module with nice grouping. Use this if you prefer one obvious "public API" import.
+- `from truffile import ForegroundApp, BackgroundWorkerApp, ToolSpec, ok, err, OAuth, AppHarness` — the most common names are also re-exported at the top level.
 
-`truffile create` arguments:
-
-- `truffile create <name>`: set app name directly, prompt for base path.
-- `truffile create <name> --path <dir>`: set app name and base directory.
-- `truffile create <name> -p <dir>`: short form for `--path`.
-
-Notes from CLI behavior:
-
-- if `<name>` is omitted, you are prompted for app name.
-- app name cannot contain `/` or `\\`.
-- target directory must not already exist.
-- scaffolded foreground/background file names are based on a safe slug from the app name.
+All three forms resolve to the same objects. Pick whichever reads best for you. The examples in this guide use `truffile.app_runtime` because that's what the reference apps in `app-store/` use.
 
 ---
 
-## App Config Shape (Current)
+## Scaffold a new app
 
-The current SDK supports app-specific foreground/background process blocks under `metadata`.
-An app can have both or either!
+The fastest way to start:
+
+```bash
+truffile create my-app
+```
+
+```text
+✓ Created app scaffold: ./my-app
+  Files:
+  → truffile.yaml
+  → my_app_foreground.py
+  → my_app_background.py
+  → icon.png
+
+  Next: truffile validate ./my-app
+```
+
+Flags:
+
+- `truffile create <name>` — set the name, prompt for base path
+- `truffile create <name> --path <dir>` — set name and base path
+- `truffile create` — fully interactive
+
+The generated `my_app_foreground.py` and `my_app_background.py` are stubs using the real SDK classes. Delete whichever you don't need — the app type is inferred from which `foreground` / `background` sections you keep in `truffile.yaml`.
+
+---
+
+## Let Claude build the app for you
+
+If you're using Claude Code (or any Claude-powered agent) in this repo, there's a built-in skill that walks through building a Truffle app end-to-end: **`truffle-app-creator`** (at `skills/SKILL.md`).
+
+It's the fastest path for things like:
+
+- *"Create a Truffle app that talks to \<service\>"*
+- *"Port this MCP server to Truffle"*
+- *"Build an integration with \<API\> and run it in the background"*
+
+The skill handles architecture decisions (foreground/background/hybrid, auth type, base image), uses `truffile create` to scaffold, implements the client/auth/tools, writes tests, and runs `truffile validate` + `truffile deploy` for you. Just describe the service you want to connect and it takes over from there.
+
+---
+
+## `truffile.yaml` structure
+
+Every app needs a `truffile.yaml`. Minimum viable config:
 
 ```yaml
 metadata:
-  name: Kalshi
-  bundle_id: org.deepshard.kalshi
+  name: My App
+  bundle_id: org.example.myapp
   description: |
-    Have Truffle trade and monitor Kalshi prediction markets for you.
+    What this app does, in one short paragraph.
   icon_file: ./icon.png
 
-  background:
+  foreground:
     process:
-      cmd: ["python", "kalshi_background.py"]
+      cmd: ["python", "my_app_foreground.py"]
       working_directory: /
       environment:
         PYTHONUNBUFFERED: "1"
-        KALSHI_API_KEY: "REPLACE_WITH_KALSHI_API_KEY"
-        KALSHI_PRIVATE_KEY: |
-          REPLACE_WITH_KALSHI_PRIVATE_KEY_PEM
+
+  background:
+    process:
+      cmd: ["python", "my_app_background.py"]
+      working_directory: /
+      environment:
+        PYTHONUNBUFFERED: "1"
     default_schedule:
       type: interval
       interval:
         duration: 30m
-        schedule:
-          daily_window: "00:00-23:59"
-
-  foreground:
-    process:
-      cmd: ["python", "kalshi_foreground.py"]
-      working_directory: /
-      environment:
-        PYTHONUNBUFFERED: "1"
-        KALSHI_API_KEY: "REPLACE_WITH_KALSHI_API_KEY"
-        KALSHI_PRIVATE_KEY: |
-          REPLACE_WITH_KALSHI_PRIVATE_KEY_PEM
+        daily_window: "00:00-23:59"
 
 steps:
   - name: Install dependencies
     type: bash
     run: |
-      apk add --no-cache gcc musl-dev libffi-dev openssl-dev
-      pip install --no-cache-dir "httpx>=0.27.0" "cryptography>=42.0.0"
-  - name: Copy application files
+      pip install --no-cache-dir httpx
+
+  - name: Copy app files
     type: files
     files:
-      - source: ./config.py
-        destination: ./config.py
-      - source: ./client.py
-        destination: ./client.py
-      - source: ./bg_worker.py
-        destination: ./bg_worker.py
-      - source: ./kalshi_foreground.py
-        destination: ./kalshi_foreground.py
-      - source: ./kalshi_background.py
-        destination: ./kalshi_background.py
+      - source: ./my_app_foreground.py
+      - source: ./my_app_background.py
+
+  - name: Configure access token
+    type: text
+    content: |
+      Enter an API key from https://example.com/settings/tokens
+    fields:
+      - name: api_key
+        label: API Key
+        type: password
+        env: MY_APP_API_KEY
+    validator:
+      type: bash
+      run: python ./my_app_foreground.py --verify
+      timeout: 90
+      error_message: |
+        Could not verify MY_APP_API_KEY. Check the key is valid.
 ```
+
+### Supported step types
+
+Steps run during installation on the device, in order. Today the supported types are:
+
+| Type | What it does |
+|------|-------------|
+| `welcome` | Display markdown content to the user before install begins |
+| `bash` | Run a shell command in the app's container (for dependencies, setup) |
+| `files` | Copy files from your repo into the container |
+| `text` | Collect input from the user and expose it as env vars on the process |
+
+<Note>
+`oauth` and `vnc` step types are **not supported yet**. `truffile validate` and `truffile deploy` will reject them with an explanation. Collect access tokens via a `text` step with a password field for now — see the [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) and [`notion`](https://github.com/deepshard/truffile/tree/main/app-store/notion) apps for examples.
+</Note>
+
+### text step fields
+
+Each field in a `text` step maps user input to an environment variable available on your foreground/background processes:
+
+```yaml
+fields:
+  - name: api_key           # internal field name
+    label: API Key          # label shown to the user
+    type: password          # text | password
+    placeholder: sk_...     # optional hint
+    env: MY_APP_API_KEY     # env var the process reads
+```
+
+Add a `validator` bash step to verify credentials immediately after the user enters them — the install flow fails with your `error_message` if the bash command exits non-zero.
 
 ---
 
-## Build and Deploy Flow
-
-Use this flow for all app types:
-
-1. Validate config and source files.
-2. Check deploy plan without mutating device.
-3. Deploy via builder session.
+## Build and deploy flow
 
 ```bash
 truffile validate ./my-app
@@ -139,45 +204,42 @@ truffile deploy --dry-run ./my-app
 truffile deploy ./my-app
 ```
 
-Under the hood, deploy uses a build session, uploads declared files, runs `bash` steps, and finalizes app metadata/process config.
+- **`validate`** checks the `truffile.yaml` structure, confirms referenced files exist, and parses all Python files for syntax errors.
+- **`deploy --dry-run`** builds the deploy plan without changing anything on the device, so you can see what files will be uploaded, what bash steps will run, and how the process config will look.
+- **`deploy`** opens a build session on the device, uploads files, runs your steps in order, and registers the app.
+
+Add `-i` to `deploy` to open an interactive shell inside the app's container when the build steps finish — useful for installing extra packages or debugging before finalizing.
 
 ---
 
-## Kalshi Walkthrough:
+## Runtime stability pattern
 
-Kalshi is the best reference because it demonstrates both paths in one app:
+Whatever network clients your app opens — HTTP sessions, database connections, MCP subprocesses — close them on shutdown:
 
-- `kalshi_foreground.py` exposes MCP tools such as `get_markets`, `get_market`, `create_order`, and `get_positions`.
-- `kalshi_background.py` runs on schedule and submits portfolio/market context through `ctx.bg.submit_context(...)`.
+```python
+import atexit
 
-This is the intended split:
+def _cleanup() -> None:
+    try:
+        client.close()
+    except Exception:
+        pass
 
-- **Foreground** is your callable tool surface (MCP spec).
-- **Background** is your proactive context pipeline.
+atexit.register(_cleanup)
+```
 
-The quality of your background context directly affects proactive behavior. Rich, precise submissions perform better than generic text.
-
----
-
-## Runtime Stability Pattern (Important)
-
-In Kalshi, network clients are explicitly closed on shutdown:
-
-- foreground: `atexit.register(_cleanup)` calls `KalshiClient.close()`
-- background: `atexit.register(_cleanup)` closes the worker client and event loop
-
-Do this in your own apps. Closing outbound clients/sessions before process exit prevents flaky shutdown behavior and avoids container-side runtime crashes.
+Leaving outbound connections open at process exit is the most common source of flaky redeploys and container runtime crashes. Every example app in the repo does this.
 
 ---
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Build a Foreground App" icon="bullseye" href="/sdk/focus-app">
-    MCP tool server patterns, examples, and deployment details.
+    Use `ForegroundApp` to expose MCP tools the agent can call during tasks.
   </Card>
   <Card title="Build a Background App" icon="clock" href="/sdk/ambient-app">
-    Scheduling, context submission, and proactivity-oriented design.
+    Use `BackgroundWorkerApp` to run on a schedule and submit context to the proactive agent.
   </Card>
 </CardGroup>
 
@@ -185,14 +247,12 @@ Do this in your own apps. Closing outbound clients/sessions before process exit 
 
 ## Contribute to the Truffle App Store
 
-Contributors are welcome to submit apps to the Truffle App Store.
+Contributions are welcome.
 
-To submit your app:
+1. Open a PR adding your app under `app-store/` in the [truffile repo](https://github.com/deepshard/truffile).
+2. Include a short screen recording of your app in action.
 
-1. Open a PR with your app under the `app-store/` folder.
-2. Include a screen recording of your app in action.
-
-For accepted apps, the Truffle team will deploy the app to the App Store so others can use it. Your name can be credited as the app author. In some cases, changes may be required for runtime reliability.
+Accepted apps ship to the Truffle App Store with your name credited as the author. The Truffle team may ask for small changes around runtime reliability before shipping.
 
 <Frame>
   <img src="/images/app-store.png" alt="Example app card in Truffle App Store with author attribution" />
