@@ -166,33 +166,19 @@ steps:
 
 ### Supported step types
 
-Steps run during installation on the device, in order. Today the supported types are:
+Steps run during installation on the device, in order. The supported types are:
 
 | Type | What it does |
 |------|-------------|
-| `welcome` | Display markdown content to the user before install begins |
 | `bash` | Run a shell command in the app's container (for dependencies, setup) |
 | `files` | Copy files from your repo into the container |
 | `text` | Collect input from the user and expose it as env vars on the process |
 
+See the [Install steps reference](/sdk/install-steps) for every option on each type — field shapes, validators, exit code semantics, and multi-field examples.
+
 <Note>
 `oauth` and `vnc` step types are **not supported yet**. `truffile validate` and `truffile deploy` will reject them with an explanation. Collect access tokens via a `text` step with a password field for now — see the [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) and [`notion`](https://github.com/deepshard/truffile/tree/main/app-store/notion) apps for examples.
 </Note>
-
-### text step fields
-
-Each field in a `text` step maps user input to an environment variable available on your foreground/background processes:
-
-```yaml
-fields:
-  - name: api_key           # internal field name
-    label: API Key          # label shown to the user
-    type: password          # text | password
-    placeholder: sk_...     # optional hint
-    env: MY_APP_API_KEY     # env var the process reads
-```
-
-Add a `validator` bash step to verify credentials immediately after the user enters them — the install flow fails with your `error_message` if the bash command exits non-zero.
 
 ---
 

@@ -1,13 +1,13 @@
 ---
 title: Installation
-description: "Install the Truffile SDK to deploy apps to your Truffle"
+description: "Install the Truffile SDK to chat with and deploy apps to your Truffle"
 ---
 
 ## Prerequisites
 
 - Python 3.12 or higher
-- Truffle¹
-- The Symphony desktop client
+- A Truffle¹ device
+- The [Symphony desktop client](/client/overview), with your device already onboarded
 
 ## Install Python
 
@@ -16,20 +16,20 @@ description: "Install the Truffile SDK to deploy apps to your Truffle"
     ```bash
     brew install python@3.12
     ```
-    
-    Verify the installation:
+
+    Verify:
     ```bash
     python3 --version
     ```
   </Tab>
   <Tab title="Windows">
-    Download and install Python from [python.org](https://www.python.org/downloads/) or use Chocolatey:
-    
+    Download and install Python from [python.org](https://www.python.org/downloads/), or use Chocolatey:
+
     ```powershell
     choco install python --version=3.12.0
     ```
-    
-    Verify the installation:
+
+    Verify:
     ```powershell
     python --version
     ```
@@ -39,26 +39,22 @@ description: "Install the Truffile SDK to deploy apps to your Truffle"
     sudo apt update
     sudo apt install python3.12 python3.12-venv python3-pip
     ```
-    
-    Verify the installation:
+
+    Verify:
     ```bash
     python3 --version
     ```
   </Tab>
 </Tabs>
 
-## Set Up Your Environment
-
-Choose your preferred method for managing Python environments:
+## Set up a virtual environment
 
 <Tabs>
   <Tab title="venv">
-    Create and activate a virtual environment:
-    
     ```bash
     python3 -m venv .venv
     ```
-    
+
     <Tabs>
       <Tab title="macOS / Linux">
         ```bash
@@ -74,16 +70,14 @@ Choose your preferred method for managing Python environments:
   </Tab>
   <Tab title="uv">
     If you prefer [uv](https://github.com/astral-sh/uv) for faster package management:
-    
+
     ```bash
-    # Install uv if you haven't already
+    # install uv if you don't have it
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    
-    # Create a virtual environment
+
+    # create and activate a venv
     uv venv
-    
-    # Activate it
-    source .venv/bin/activate  # macOS/Linux
+    source .venv/bin/activate   # macOS / Linux
     # or
     .venv\Scripts\Activate.ps1  # Windows
     ```
@@ -92,7 +86,7 @@ Choose your preferred method for managing Python environments:
 
 ## Install Truffile
 
-With your environment activated, install the SDK:
+With your environment activated:
 
 ```bash
 pip install truffile
@@ -101,45 +95,26 @@ pip install truffile
 Verify the installation:
 
 ```bash
-truffile
+truffile help
 ```
 
-You should see:
-
-```
-🍄‍🟫 truffile - TruffleOS SDK
-
-Usage: truffile <command> [options]
-
-Commands:
-  scan                      Scan network for Truffle devices
-  connect <device>         Connect to a Truffle device
-  disconnect <device|all>  Disconnect and clear credentials
-  create [name]            Create a new app scaffold
-  deploy [path]            Deploy an app (reads type from truffile.yaml)
-  validate [path]          Validate app config and files
-  delete                   Delete installed apps from device
-  list <apps|devices>      List installed apps or devices
-  models                   List models on your Truffle
-  chat                     Chat on your Truffle (REPL by default)
-
-Examples:
-  truffile scan                # find devices on network
-  truffile connect truffle-6272
-  truffile create my-app       # scaffold a new app
-  truffile deploy ./my-app
-  truffile deploy --dry-run ./my-app
-  truffile deploy              # uses current directory
-  truffile validate ./my-app
-  truffile list apps
-  truffile models              # show models on your Truffle
-  truffile chat                # open interactive REPL chat
-```
+You should see the Truffile welcome panel listing every command (`scan`, `connect`, `deploy`, `chat`, `infer`, and the rest). If you see the panel, you're ready to go.
 
 <Note>
-Make sure you've already onboarded your Truffle with the desktop client and created an account before proceeding.
+Make sure you've onboarded your Truffle with the Symphony desktop client and grabbed your User ID from **Settings → About** before running `truffile connect`.
 </Note>
 
-## Next Steps
+## Next steps
 
-Now that you have Truffile installed, head to the [CLI guide](/sdk/cli) to connect to your Truffle device.
+<CardGroup cols={2}>
+  <Card title="Connect and use the CLI" icon="terminal" href="/sdk/cli">
+    Scan for devices, connect, chat, run inference, and deploy apps.
+  </Card>
+  <Card title="Build your first app" icon="wrench" href="/sdk/building-apps">
+    Learn how Truffle apps are structured and scaffold one with `truffile create`.
+  </Card>
+</CardGroup>
+
+## Building apps with Claude Code
+
+If you're cloning the [truffile repo](https://github.com/deepshard/truffile) to work on apps, there's a bundled skill called **`truffle-app-creator`** (`skills/SKILL.md`) that a Claude Code agent can use to build a Truffle app end-to-end from a description. Give it a prompt like *"Create a Truffle app that connects to \<service\>"* and it'll handle scaffolding, implementing the tools, wiring up auth, and running `truffile validate` + `truffile deploy`.

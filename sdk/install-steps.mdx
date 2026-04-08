@@ -1,0 +1,328 @@
+---
+title: Install Steps Reference
+description: "Every option for the bash, files, and text steps in truffile.yaml"
+---
+
+Install steps run on the device, in order, when a user installs your app. They're declared under the top-level `steps:` array in `truffile.yaml`:
+
+```yaml
+steps:
+  - name: Install dependencies
+    type: bash
+    run: |
+      pip install --no-cache-dir httpx
+  - name: Copy app files
+    type: files
+    files:
+      - source: ./my_app_foreground.py
+  - name: Configure
+    type: text
+    fields:
+      - name: api_key
+        label: API Key
+        type: password
+        env: MY_APP_API_KEY
+```
+
+Only three step types are supported today: **`bash`**, **`files`**, **`text`**. Anything else (`oauth`, `vnc`, `welcome`, etc.) is rejected by `truffile validate` and `truffile deploy`.
+
+---
+
+## Step ordering
+
+Steps execute top-to-bottom. The three practical rules:
+
+1. **Install dependencies before anything that needs them.** Put your `bash` step that runs `pip install` early.
+2. **Copy files before running them.** Any `bash` step or `text` validator that invokes a Python file needs a preceding `files` step that uploads it.
+3. **Collect credentials (text) after files are in place.** `text` validators typically call one of your own Python scripts, so those scripts must already be on disk.
+
+A safe default order: `bash` (dependencies) → `files` (copy scripts) → `text` (credentials + validator).
+
+---
+
+## `bash`
+
+Runs a shell command inside the app's build container. Use it for installing dependencies, creating directories, pre-warming caches, etc.
+
+```yaml
+- name: Install dependencies
+  type: bash
+  run: |
+    apk add --no-cache gcc musl-dev libffi-dev openssl-dev
+    pip install --no-cache-dir "httpx>=0.27.0" "cryptography>=42.0.0"
+```
+
+### Options
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | no | Display label shown while the step runs. Defaults to `"bash"`. |
+| `type` | yes | Must be `"bash"`. |
+| `run` | yes | Shell command to execute. Use a YAML block scalar (`\|`) for multi-line scripts. |
+
+### Exit codes
+
+If the command exits non-zero, the deploy aborts and the step is reported as failed:
+
+```
+✗ Step 'Install dependencies' failed with exit code 1
+```
+
+There's no retry. Write commands that are idempotent and handle their own errors — e.g. `mkdir -p` instead of `mkdir`, `pip install --no-cache-dir` instead of rebuilding caches.
+
+### The container environment
+
+The base image is Alpine-based (`apk` is the package manager, not `apt`). Python is preinstalled. Commands run with the working directory set to the app's exec directory (usually `/`).
+
+<Tip>
+You can open a shell in the container mid-deploy to experiment with commands before codifying them. Run `truffile deploy -i <path>` — after your steps finish, you get an interactive shell inside the same container. Type `exit` or Ctrl+D to finalize the deploy.
+</Tip>
+
+---
+
+## `files`
+
+Uploads files from your app directory into the build container.
+
+```yaml
+- name: Copy app files
+  type: files
+  files:
+    - source: ./config.py
+      destination: ./config.py
+    - source: ./auth.py
+      destination: ./auth.py
+    - source: ./my_app_foreground.py
+      destination: ./my_app_foreground.py
+```
+
+### Options
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | no | Display label. |
+| `type` | yes | Must be `"files"`. |
+| `files` | yes | A list of file entries. |
+
+Each entry in `files`:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `source` | yes | Path relative to your app directory. Can be a file or a directory. |
+| `destination` | yes | Path in the container (usually relative to the exec cwd). |
+
+### File vs directory
+
+If `source` points to a file, it's uploaded to `destination`.
+
+If `source` points to a **directory**, every file inside it is uploaded recursively. `__pycache__` directories are skipped automatically. The `destination` is treated as a destination directory, and files are placed underneath it preserving the relative structure:
+
+```yaml
+- name: Copy skills
+  type: files
+  files:
+    - source: ./skills/
+      destination: ./skills/
+```
+
+This uploads `./skills/foo.py` → `./skills/foo.py`, `./skills/subdir/bar.py` → `./skills/subdir/bar.py`, and so on.
+
+### Missing files
+
+If `source` doesn't exist, deploy fails immediately:
+
+```
+FileNotFoundError: no such file: /path/to/my-app/missing.py
+```
+
+`truffile validate` catches this before you even try to deploy — it resolves every `source` against the app directory and errors if anything is missing.
+
+---
+
+## `text`
+
+Prompts the user for one or more values during install, stores them as environment variables on your foreground/background processes, and optionally runs a validator command to verify the inputs immediately.
+
+This is the **only** supported way to collect credentials right now. OAuth and VNC flows are not supported yet.
+
+```yaml
+- name: Configure GitHub access token
+  type: text
+  content: |
+    Enter a GitHub personal access token so Truffle can talk to GitHub on your behalf.
+
+    To create one:
+    1. Go to https://github.com/settings/tokens
+    2. Click **Generate new token**
+    3. Select the scopes you want (recommended: `repo`, `read:org`, `gist`)
+    4. Copy the token and paste it below
+  fields:
+    - name: github_access_token
+      label: GitHub Access Token
+      type: password
+      placeholder: ghp_...
+      env: GITHUB_ACCESS_TOKEN
+  validator:
+    type: bash
+    run: |
+      python ./github_foreground.py --verify
+    error_message: |
+      Could not verify GITHUB_ACCESS_TOKEN. Check the token is valid and has the required scopes.
+```
+
+### Top-level options
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | no | Display label shown before prompting. |
+| `type` | yes | Must be `"text"`. |
+| `content` | no | Markdown-ish text shown to the user before the field prompts. Use a block scalar (`\|`) for multi-line content. |
+| `fields` | yes | List of input fields. |
+| `validator` | no | Optional bash command that runs after all fields are collected. |
+
+### Field options
+
+Each entry in `fields`:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Internal field name. |
+| `label` | no | Label shown to the user. Falls back to `name` if omitted. |
+| `type` | no | `"text"` (default) or `"password"`. `password` hides input as the user types. |
+| `placeholder` | no | Hint shown in parentheses in the prompt, e.g. `API Key (sk_...)`. |
+| `default` | no | Value used if the user presses Enter without typing anything. |
+| `env` | yes | The environment variable name that receives the collected value. Must match what your app reads via `os.getenv(...)`. |
+
+The value the user enters is exposed to your foreground and background processes via the env var named in `env`. The injection happens at the process level — by the time your Python code runs, `os.getenv("GITHUB_ACCESS_TOKEN")` returns the token the user entered.
+
+### Validator options
+
+The validator runs a bash command *after* all fields are collected, with the collected values already set in the environment. If the command exits non-zero, install fails with your `error_message`.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | yes | Must be `"bash"`. |
+| `run` | yes | Shell command. Typically calls `python ./your_script.py --verify`. |
+| `error_message` | no | Message shown to the user when the validator exits non-zero. |
+
+The env vars from your `fields` are prepended to the command, so `python ./foo.py --verify` runs with `MY_API_KEY='whatever the user typed'` already set.
+
+<Tip>
+The standard pattern is to add a `--verify` flag to your foreground or background script and call it from the validator. The `BackgroundWorkerApp.main()` entry point handles `--verify` automatically — it calls `verify_worker()`, prints the result, and exits 0 or 1. For foreground apps you wire it up yourself with `argparse`.
+</Tip>
+
+### Single-field example
+
+```yaml
+- name: Configure Exa API key
+  type: text
+  content: |
+    Enter your Exa API key.
+
+    Get one at https://dashboard.exa.ai/onboarding.
+  fields:
+    - name: exa_api_key
+      label: Exa API Key
+      type: password
+      placeholder: exa_...
+      env: EXA_API_KEY
+  validator:
+    type: bash
+    run: |
+      python ./exa_foreground.py --verify
+    error_message: |
+      Could not verify EXA_API_KEY. Confirm the key is valid and has access.
+```
+
+### Multi-field example
+
+Multiple fields in a single step are all prompted in order, then a single validator runs with all values in the environment:
+
+```yaml
+- name: Configure Kalshi API credentials
+  type: text
+  content: |
+    Enter your Kalshi API credentials.
+
+    Create an API key at https://kalshi.com/account/profile and paste both
+    the key and the private key PEM below.
+  fields:
+    - name: kalshi_api_key
+      label: Kalshi API Key
+      type: password
+      placeholder: 00000000-0000-0000-0000-000000000000
+      env: KALSHI_API_KEY
+    - name: kalshi_private_key
+      label: Kalshi Private Key (PEM)
+      type: password
+      placeholder: -----BEGIN PRIVATE KEY-----
+      env: KALSHI_PRIVATE_KEY
+  validator:
+    type: bash
+    run: |
+      python ./kalshi_background.py --verify
+    error_message: |
+      Could not verify Kalshi credentials. Check both the API key and private key are correct.
+```
+
+### Text field with a default
+
+```yaml
+- name: Configure IMAP server
+  type: text
+  fields:
+    - name: imap_server
+      label: IMAP Server
+      type: text
+      placeholder: imap.gmail.com
+      default: imap.gmail.com
+      env: IMAP_SERVER
+```
+
+If the user just presses Enter, the value is `imap.gmail.com`.
+
+---
+
+## How env vars reach your process
+
+Values collected by `text` steps are injected into your foreground/background processes *on top of* whatever's already in the `environment:` block under `metadata.foreground.process` or `metadata.background.process`.
+
+For example, this yaml:
+
+```yaml
+metadata:
+  foreground:
+    process:
+      cmd: ["python", "my_app_foreground.py"]
+      environment:
+        PYTHONUNBUFFERED: "1"
+
+steps:
+  - type: text
+    fields:
+      - name: api_key
+        type: password
+        env: MY_APP_API_KEY
+```
+
+results in a process that sees both `PYTHONUNBUFFERED=1` *and* `MY_APP_API_KEY=<user input>` in its environment. You read the user-supplied value the same way as any other env var:
+
+```python
+import os
+api_key = os.getenv("MY_APP_API_KEY", "").strip()
+if not api_key:
+    raise RuntimeError("MY_APP_API_KEY is not set")
+```
+
+---
+
+## Validating before you deploy
+
+`truffile validate` catches most step-level problems before you ever hit the device:
+
+- Unknown step types (`oauth`, `vnc`, etc.) are rejected with a clear message.
+- Missing required fields (`type`, `run` on bash, `files` on files) produce errors.
+- Missing `source` files in `files` steps are caught.
+- Python syntax errors in any uploaded `.py` file are caught.
+
+Run `truffile validate ./my-app` before every `truffile deploy` — it's nearly instant and catches everything except runtime failures in your `bash` commands and `text` validators.
