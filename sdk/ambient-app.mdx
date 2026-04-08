@@ -278,6 +278,171 @@ You can override `AUTH_FAILURE_THRESHOLD` on your subclass if 3 is too few or to
 
 ---
 
+## Calling your own foreground tools from the background
+
+If your app already has a foreground with tools like `gmail_search`, `github_list_issues`, or `kalshi_get_positions`, your background doesn't need to reimplement that logic — it can call its own foreground tools directly and reuse all the auth, parsing, and error handling that lives there.
+
+The runtime gives your background a lease on the foreground container via **`ctx.connect_foreground()`**. It returns a `ForegroundConnection` that speaks MCP to your foreground.
+
+### Basic shape
+
+```python
+from __future__ import annotations
+
+import asyncio
+
+from truffile.app_runtime.background import (
+    BackgroundRunContext,
+    run_background,
+)
+
+
+async def _run_cycle(ctx: BackgroundRunContext) -> None:
+    fg = await ctx.connect_foreground()
+    try:
+        # call any tool your foreground app exposes, by name
+        result = await fg.call_tool("my_tool", query="hello", limit=5)
+        ...
+    finally:
+        await fg.close()
+
+
+def my_background(ctx: BackgroundRunContext) -> None:
+    asyncio.run(_run_cycle(ctx))
+
+
+if __name__ == "__main__":
+    run_background(my_background)
+```
+
+Key points:
+
+- `ctx.connect_foreground()` is **async**, so your cycle has to be too. The standard pattern is a sync entry point (`def my_background(ctx)`) that calls `asyncio.run(_run_cycle(ctx))` into an async worker.
+- `fg.call_tool(name, **kwargs)` takes the tool name and any keyword arguments. The kwargs become the tool's input — exactly the same as if the agent had called it.
+- Always call `await fg.close()` in a `finally` block so the lease is released when the cycle ends.
+
+<Note>
+Because this pattern needs an async function with direct access to `ctx`, it's easiest to write with the lower-level `run_background(fn)` entry point instead of `BackgroundWorkerApp`. The google reference app in `app-store/apps/google` uses exactly this shape.
+</Note>
+
+### Real example: reuse foreground auth
+
+The most common reason to reach into the foreground is to reuse its auth check. Instead of rewriting token loading and validation in `bg_worker.py`, just call your foreground's `check_auth` tool:
+
+```python
+async def _run_cycle(ctx: BackgroundRunContext) -> None:
+    fg = await ctx.connect_foreground()
+    try:
+        # 1. reuse the foreground's auth check
+        auth_result = await fg.call_tool("google_check_auth")
+        auth_text = _extract_text(auth_result)
+        if "error" in auth_text.lower() or "not authenticated" in auth_text.lower():
+            _handle_auth_failure(ctx, auth_text)
+            return
+
+        # 2. now make domain calls through foreground tools
+        search_result = await fg.call_tool(
+            "gmail_search",
+            query="is:inbox is:unread -from:me",
+            max_results=30,
+        )
+        messages = _parse_search_results(_extract_text(search_result))
+
+        # 3. drill into each thread via another foreground tool
+        unanswered = []
+        for msg in messages[:10]:
+            thread = await fg.call_tool("gmail_get_thread", thread_id=msg["thread_id"])
+            if not _user_has_replied(_extract_text(thread)):
+                unanswered.append(msg)
+
+        # 4. submit a context message the same way any other bg cycle would
+        if unanswered:
+            ctx.bg.submit_context(
+                content=_build_digest(unanswered),
+                uris=[f"https://mail.google.com/mail/u/0/#inbox/{m['thread_id']}" for m in unanswered],
+                priority=1,
+            )
+    finally:
+        await fg.close()
+```
+
+### What `call_tool` returns
+
+`call_tool(name, **kwargs)` returns an MCP `CallToolResult` object. The result content is a list of content blocks — for text tools, that's usually one or more `TextContent` blocks. A small helper to extract the text:
+
+```python
+def _extract_text(result) -> str:
+    if hasattr(result, "content"):
+        parts = []
+        for block in result.content:
+            if hasattr(block, "text"):
+                parts.append(block.text)
+        return "\n".join(parts)
+    return str(result)
+```
+
+If your foreground tools return JSON with `ok(...)` / `err(...)`, parse the extracted text with `json.loads`.
+
+### Listing available tools
+
+If you need to discover what tools the foreground exposes (useful during development or for dynamic dispatch):
+
+```python
+tools = await fg.list_tools()
+for tool in tools:
+    print(tool.name, "-", tool.description)
+```
+
+### Lease behavior
+
+When you call `ctx.connect_foreground()`, the runtime spins up (or keeps alive) your foreground container and gives your background a **lease**. The defaults:
+
+| | Default | Meaning |
+|---|---|---|
+| Lease duration | 300s (5 minutes) | How long the foreground stays up for this background cycle. |
+| Auto-refresh | every 4 minutes (80% of lease) | `ForegroundConnection` refreshes the lease in the background so long-running cycles don't lose the connection. |
+| Connect retry | 10 × 0.5s | If the foreground container is still booting, `connect_foreground()` retries until it's ready. |
+| Release | on `close()` | When you call `fg.close()`, the lease is released and the foreground can be shut down by the runtime. |
+
+You can override the lease when you connect:
+
+```python
+# grant a 15-minute lease for a heavier cycle
+fg = await ctx.connect_foreground(lease_duration_seconds=900)
+```
+
+Pick a duration that comfortably covers your cycle. If the lease expires before you close, the auto-refresh machinery tries to keep it alive; if that also fails, your next `call_tool` will error.
+
+<Warning>
+If your cycle crashes between opening and closing, the lease stays held until the runtime's idle timeout kicks in (5 min + 15s in the worst case). Wrap all foreground calls in a `try` / `finally` so `fg.close()` runs even on exceptions.
+</Warning>
+
+### Using this with `BackgroundWorkerApp`
+
+The `run_background(fn)` entry point is the cleanest fit for foreground calls because it's async-native. If you're already using `BackgroundWorkerApp` for a simpler cycle and want to mix in a foreground call, bridge from sync to async inside `handle_cycle_result`:
+
+```python
+import asyncio
+
+class MyBackgroundApp(BackgroundWorkerApp[MyWorker, CycleResult]):
+    ...
+
+    def handle_cycle_result(self, ctx, result: CycleResult) -> None:
+        if result.needs_foreground_followup:
+            asyncio.run(self._followup(ctx, result))
+
+    async def _followup(self, ctx, result: CycleResult) -> None:
+        fg = await ctx.connect_foreground()
+        try:
+            await fg.call_tool("my_refresh_tool")
+        finally:
+            await fg.close()
+```
+
+The tradeoff is one extra event loop per cycle. For apps that *mostly* live in foreground calls, prefer the `run_background(fn)` pattern end-to-end.
+
+---
+
 ## Writing good context submissions
 
 The quality of your background context *directly* affects how proactive behavior feels. Rich, concrete items win every time.
@@ -313,7 +478,11 @@ Background context can trigger action in *any* app, not just yours. If an Instag
 
 ## Schedule configuration
 
-The `default_schedule` block in `truffile.yaml` controls how often your cycle runs:
+The `default_schedule` block in `truffile.yaml` under `metadata.background` controls when your cycle runs. Three policy types are supported: **`interval`**, **`always`**, and **`times`**.
+
+### `interval` — run every N minutes/hours
+
+The most common mode. Your cycle runs, yields, sleeps for the configured duration, then runs again.
 
 ```yaml
 metadata:
@@ -327,15 +496,65 @@ metadata:
       type: interval
       interval:
         duration: 30m
-        daily_window: "00:00-23:59"
+        schedule:
+          daily_window: "00:00-23:59"
 ```
 
-- **`duration`** — interval between runs (`5m`, `30m`, `1h`, etc.)
-- **`daily_window`** — optional time window to respect (e.g. `"09:00-18:00"` to only run during business hours)
+- **`duration`** — interval between runs. Accepts `ms`, `s`, `m`, `h`, `d` suffixes (e.g. `5m`, `30m`, `2h`, `1d`).
+- **`schedule.daily_window`** — optional time window that gates execution. `"09:00-18:00"` only runs during business hours; `"00:00-23:59"` (the effective default) runs any time.
+- **`schedule.allowed_days`** — optional list like `[mon, tue, wed, thu, fri]` to restrict to specific weekdays.
+- **`schedule.forbidden_days`** — optional inverse: list of days to skip (e.g. `[sat, sun]`). Mutually exclusive with `allowed_days`.
 
 <Tip>
 During development, set `duration: 1m` so you can see results quickly. Bump it back up before shipping.
 </Tip>
+
+### `always` — keep running as long as there's work
+
+For apps that need to react to live data the moment it arrives. The runtime keeps your process alive continuously instead of running-then-sleeping. Use it when a fixed interval would either miss updates (too slow) or burn cycles (too fast).
+
+```yaml
+metadata:
+  background:
+    process:
+      cmd: ["python", "my_app_background.py"]
+      working_directory: /
+    default_schedule:
+      type: always
+```
+
+No duration, no schedule block — just `type: always`.
+
+Good fits:
+
+- Watching a websocket or server-sent event stream (market data, chat messages, push notifications)
+- Apps that need to submit context to the proactive agent **the moment** something happens — e.g. a Kalshi watcher that fires a high-priority submission the instant a position moves, not 30 minutes later
+- Any integration where the upstream service pushes data instead of you polling for it
+
+<Warning>
+Under `always`, your cycle function is expected to block (on a websocket read, a queue, whatever) rather than return quickly. If you return immediately, the runtime will just call you again and you'll burn CPU doing nothing. Write your loop to stay inside `run_cycle` for as long as the connection is alive, and return only when you want the runtime to restart you.
+</Warning>
+
+### `times` — run at specific times of day
+
+For apps that should run at fixed clock times (e.g. a daily 9am digest):
+
+```yaml
+metadata:
+  background:
+    process:
+      cmd: ["python", "my_app_background.py"]
+    default_schedule:
+      type: times
+      times:
+        run_times:
+          - "09:00"
+          - "17:00"
+        allowed_days: [mon, tue, wed, thu, fri]
+```
+
+- **`run_times`** — list of `HH:MM` (or `HH:MM:SS`) times of day, each triggers one cycle.
+- **`allowed_days`** / **`forbidden_days`** — optional day-of-week gating, same semantics as `interval`.
 
 ---
 
