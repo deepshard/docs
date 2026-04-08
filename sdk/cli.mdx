@@ -1,41 +1,25 @@
 ---
 title: Truffile CLI
-description: "Connect to your Truffle and deploy apps using the truffile CLI"
+description: "The complete guide to using the truffile CLI — device connection, chat, inference, app management, and more"
 ---
 
 ## Overview
 
-The truffile CLI lets you discover, connect to, and deploy apps to your Truffle devices.
+The `truffile` CLI is your interface to Truffle. Use it to discover and connect to devices, chat with the on-device agent, run raw model inference, and deploy apps.
 
 ```bash
-truffile
+pip install truffile
 ```
 
-```
-🍄‍🟫 truffile - TruffleOS SDK
-
-Usage: truffile <command> [options]
-
-Commands:
-  scan                      Scan network for Truffle devices
-  connect <device>         Connect to a Truffle device
-  disconnect <device|all>  Disconnect and clear credentials
-  create [name]            Create a new app scaffold
-  deploy [path]            Deploy an app (reads type from truffile.yaml)
-  validate [path]          Validate app config and files
-  delete                   Delete installed apps from device
-  list <apps|devices>      List installed apps or devices
-  models                   List models on your Truffle
-  chat                     Chat on your Truffle (REPL)
-```
+Running `truffile` with no arguments drops you straight into [chat mode](#chat-mode).
 
 ---
 
 ## Connecting to Your Truffle
 
-### Step 1: Scan for Devices
+You need to connect to a device before you can chat, run inference, or manage apps.
 
-Find Truffle devices on your local network:
+### Scan for devices
 
 ```bash
 truffile scan
@@ -44,198 +28,406 @@ truffile scan
 ```
 ✓ Scanning for Truffle devices (5s)
 
-Found 6 Truffle device(s):
+Found 3 Truffle device(s):
 
   1. truffle-6070 (192.168.1.109)
-  2. truffle-5970 (192.168.1.104)
+  2. truffle-5970 (192.168.1.104) [connected]
   3. truffle-6272 (192.168.1.32)
-  4. truffle-7280 (192.168.1.87)
-  5. truffle-0148 (192.168.1.60)
-  6. truffle-6239 (192.168.1.129)
 
-Select device to connect (1-6) or press Enter to cancel:
+Select device to connect (1-3) or press Enter to cancel:
 ```
 
-Select a device by entering its number.
+Select a device by number to start the connection flow.
 
-### Step 2: Enter Your User ID
+### Connect directly
 
-After selecting a device, you'll be prompted for your User ID:
-
-```
-✓ Resolving truffle-6272.local
-
-  Make sure you have:
-  • Onboarded with the Truffle app
-  • Your User ID from the recovery codes
-
-? Enter your User ID:
-```
-
-<Note>
-You can find your User ID in the **Settings → About** section of your Truffle desktop client.
-</Note>
-
-### Step 3: Approve the Connection
-
-After entering your User ID, you'll see:
-
-```
-✓ Connecting to device
-
-• Requesting authorization...
-  Please approve on your Truffle device
-⠋ Waiting for approval
-```
-
-A dialog will appear on your Truffle client asking you to approve the connection:
-
-<Frame>
-  <img src="/images/approve-connect.png" alt="Approve connection dialog" />
-</Frame>
-
-Click **Approve** to allow the connection.
-
-```
-✓ Waiting for approval
-
-✓ Connected to truffle-6272
-```
-
-### Reconnecting Later
-
-Once you've connected to a device, you can reconnect directly without scanning:
+If you already know your device name:
 
 ```bash
 truffile connect truffle-6272
 ```
 
-Your credentials are saved locally, so you won't need to re-enter your User ID or approve again.
+You'll be prompted for your **User ID** (found in **Settings > About** in the Truffle desktop client), then asked to approve the connection on your device.
 
----
+Credentials are saved locally — subsequent connections are automatic.
 
-## Disconnecting
-
-To disconnect from all devices and clear your saved credentials:
+### Disconnect
 
 ```bash
+# disconnect from a specific device
+truffile disconnect truffle-6272
+
+# disconnect from all devices and clear all saved credentials
 truffile disconnect all
 ```
 
 <Warning>
-This will require you to go through the full connection process again (User ID + approval) the next time you want to connect.
+`disconnect all` clears all saved credentials. You'll need to go through the full approval flow again next time.
 </Warning>
 
-To disconnect from a specific device:
-
-```bash
-truffile disconnect truffle-6272
-```
-
 ---
 
-## Deploying Apps
+## Chat Mode
 
-Once connected, you can deploy apps to your Truffle.
-
-<Note>
-If you haven't built an app yet, check out the [Building Apps](/sdk/building-apps) guide first.
-</Note>
-
-### Create a Scaffold
-
-Create a starter app folder with `truffile.yaml`, foreground/background entrypoints, and icon:
+Chat mode connects you to the on-device agent. It supports tasks, app integration, tool calls, thinking display, and streaming with markdown rendering.
 
 ```bash
-truffile create my-app
-```
-
-Set a custom base directory:
-
-```bash
-truffile create my-app --path ./apps
-```
-
-If you run `truffile create` without args, the CLI prompts for app name and base path.
-
-### Basic Deploy
-
-Deploy an app from the current directory:
-
-```bash
-truffile deploy
-```
-
-Or specify a path to your app folder:
-
-```bash
-truffile deploy ./my-app
-```
-
-truffile will:
-1. Validate your `truffile.yaml` configuration
-2. Check syntax for all Python files
-3. Resolve app runtime shape (**foreground**, **background**, or both)
-4. Upload files and run installation steps
-5. Register the app with your Truffle
-
-### Interactive Mode
-
-Deploy with an interactive terminal session for debugging:
-
-```bash
-truffile deploy -i
-```
-
-This uploads your files and opens a terminal inside your app's container. You can:
-- Test your app manually
-- Install additional dependencies
-- Debug issues in real-time
-
-<Tip>
-You can even install [Claude Code](https://claude.ai/code) inside the container to help fix or extend your app!
-
-```bash
-curl -fsSL https://claude.ai/install.sh | bash
-```
-</Tip>
-
-Type `exit` or press `Ctrl+D` to finish the deploy.
-
----
-
-## Listing Apps & Devices
-
-### List Installed Apps
-
-See all apps installed on your connected Truffle:
-
-```bash
-truffile list apps
-```
-
-### List Connected Devices
-
-See all devices you have saved credentials for:
-
-```bash
-truffile list devices
-```
-
----
-
-## Inference Commands
-
-Inference commands available in CLI:
-
-```bash
-truffile models
 truffile chat
 ```
 
-For `truffile chat`, runtime behavior is controlled inside REPL using slash commands (`/help`, `/config`, `/models`, `/attach`, `/reasoning`, `/mcp`, etc.).  
-Run `truffile chat` by itself and manage behavior in-session.
-See the [Inference](/sdk/inference) page for full command details.
+This is also the default — running `truffile` with no arguments enters chat.
+
+### Sending messages
+
+Type your message and press **Enter** to send. Use **Alt+Enter** for multi-line input.
+
+```
+you> What can you help me with?
+
+thinking: considering user's question about capabilities...
+• tool: get_system_info — checking available apps
+
+I can help you with several things...
+```
+
+Responses stream in real-time with a thinking orb animation while the model reasons. Tool calls appear inline above the response.
+
+### Resuming tasks
+
+Each conversation is a **task**. You can resume previous tasks:
+
+```bash
+# resume with interactive task picker at startup
+truffile chat --resume
+
+# or just run truffile --resume
+truffile --resume
+```
+
+Inside chat, use `/tasks` or `/resume` to switch between tasks at any time.
+
+### Chat commands
+
+Type `/help` inside chat to see all commands.
+
+#### Task management
+
+| Command | What it does |
+|---------|-------------|
+| `/tasks` | Pick from recent tasks |
+| `/resume` | Same as `/tasks` |
+| `/new` | Start a fresh conversation |
+| `/title` | Show the current task's title |
+| `/rename <name>` | Rename the current task |
+
+#### App integration
+
+Installed apps are registered as slash commands. Run `/apps` to see them:
+
+```
+you> /apps
+
+installed apps:
+  /kalshi     Kalshi (org.deepshard.kalshi)
+  /slack      Slack (org.deepshard.slack)
+  /github     GitHub (org.deepshard.github)
+```
+
+Type `/<appname>` to add that app's tools to your current task:
+
+```
+you> /kalshi
+✓ added Kalshi to task
+
+you> What are the top prediction markets right now?
+```
+
+#### App & task management
+
+| Command | What it does |
+|---------|-------------|
+| `/apps` | List installed apps with their slash shortcuts |
+| `/<appname>` | Add an app to the current task |
+| `/deploy <path>` | Deploy an app to the device from within chat |
+| `/delete app [name]` | Delete an installed app (interactive picker if no name given) |
+| `/delete task` | Delete a task (interactive picker) |
+| `/create <name>` | Scaffold a new app |
+| `/devices` | List connected devices |
+
+#### Exiting
+
+| Command | What it does |
+|---------|-------------|
+| `/exit` | Exit chat |
+| `/quit` | Exit chat |
+| **Ctrl+D** | Exit chat |
+
+---
+
+## Infer Mode
+
+Infer mode gives you direct access to model inference with full control over generation parameters, MCP tool integration, and image input.
+
+```bash
+truffile infer
+```
+
+### CLI flags
+
+| Flag | What it does |
+|------|-------------|
+| `--model <name>` | Pre-select a model |
+| `--system <text>` | Set an initial system prompt |
+| `--no-stream` | Disable streaming (get the full response at once) |
+| `--no-tools` | Disable built-in tools (`web_search`, `web_fetch`) |
+| `--mcp <url>` | Connect an MCP server at startup (can be repeated) |
+
+```bash
+# start with a specific model and system prompt
+truffile infer --model my-model --system "You are a helpful coding assistant"
+
+# start with MCP server pre-connected
+truffile infer --mcp http://127.0.0.1:8000/mcp
+```
+
+### Generation controls
+
+All settings can be viewed and changed live inside the REPL. Run the command without an argument to see the current value.
+
+| Command | What it does | Default |
+|---------|-------------|---------|
+| `/reasoning on\|off` | Show model reasoning/thinking | `on` |
+| `/stream on\|off` | Stream tokens as they're generated | `on` |
+| `/json on\|off` | JSON response mode | `off` |
+| `/tools on\|off` | Enable built-in tools (`web_search`, `web_fetch`) | `on` |
+| `/max_tokens <int>` | Max output tokens | `2048` |
+| `/temperature <float\|off>` | Sampling temperature | `None` |
+| `/top_p <float\|off>` | Top-p (nucleus) sampling | `None` |
+| `/max_rounds <int>` | Max tool call rounds per turn | `8` |
+| `/system <text\|off>` | Set or clear the system prompt | `None` |
+
+```
+> /config
+chat config
+  model: llama-3.1-8b
+  reasoning: True
+  stream: True
+  json: False
+  tools: True
+  max_tokens: 2048
+  temperature: None
+  top_p: None
+  max_rounds: 8
+  system: <none>
+  mcp: <disconnected>
+```
+
+### Built-in tools
+
+When tools are enabled (`/tools on`, the default), the model can use:
+
+- **`web_search`** — search the web and return top results
+- **`web_fetch`** — fetch a URL and extract readable text
+
+Tool calls are displayed inline:
+
+```
+> What's the latest news about SpaceX?
+
+🔨 tool web_search
+🔨 tool web_fetch
+
+Here's what I found...
+
+---
+tokens [142/580/722] | decode 48.2 t/s | ttft 312ms
+```
+
+Token usage stats are printed after each response.
+
+### Image attachments
+
+Attach an image to your next message with `/attach`:
+
+```
+> /attach ./screenshot.png
+✓ attachment ready: path=/Users/me/screenshot.png size=142.3 KiB mime=image/png
+
+> What's in this image?
+[attach] sending with image: path=/Users/me/screenshot.png size=142.3 KiB mime=image/png
+
+The image shows...
+```
+
+You can also attach from a URL:
+
+```
+> /attach https://example.com/photo.jpg
+✓ attachment ready: url=https://example.com/photo.jpg size=89.1 KiB mime=image/jpeg
+```
+
+The attachment is sent with the next message, then cleared automatically.
+
+Supported formats: **JPEG**, **PNG**, **BMP** natively. Other formats (WebP, TIFF, etc.) are transcoded via Pillow if installed.
+
+### MCP integration
+
+Connect external [MCP](https://modelcontextprotocol.io) servers to give the model additional tools. Only **streamable HTTP** transport is supported.
+
+| Command | What it does |
+|---------|-------------|
+| `/mcp status` | Show connection status and tool count |
+| `/mcp connect <url>` | Connect to an MCP server |
+| `/mcp tools` | List available tools from connected server |
+| `/mcp disconnect` | Disconnect the MCP session |
+
+```
+> /mcp connect http://127.0.0.1:8000/mcp
+/mcp connect ✓ http://127.0.0.1:8000/mcp (5 tools)
+
+> /mcp tools
+/mcp tools get_markets, get_market, get_orderbook, create_order, cancel_order
+```
+
+MCP tools and built-in tools work together — the model picks the right tool for each request.
+
+<Tip>
+This is a great way to **test your app's MCP server locally** before deploying to the device. Start your MCP server, connect it via `/mcp connect`, and test with real prompts.
+</Tip>
+
+### Conversation management
+
+| Command | What it does |
+|---------|-------------|
+| `/history` | Show conversation history (role + content summary) |
+| `/reset` | Clear conversation history and pending attachments |
+| `/models` | Open the interactive model picker |
+| `/config` | Show all current settings |
+| `/create <name>` | Scaffold a new app |
+| `/exit` | Exit infer |
+
+---
+
+## Keyboard Shortcuts
+
+These work in both chat and infer modes.
+
+| Key | What it does |
+|-----|-------------|
+| **Enter** | Send message |
+| **Alt+Enter** | Insert a new line (multi-line input) |
+| **Tab** | Autocomplete slash commands |
+| **Esc** | Interrupt a streaming response |
+| **Ctrl+C** | Interrupt current operation (press twice within 3s to exit) |
+| **Ctrl+D** | Exit the REPL |
+
+---
+
+## App Management
+
+### Create a new app
+
+```bash
+# interactive — prompts for name
+truffile create
+
+# with a name
+truffile create my-app
+
+# in a specific directory
+truffile create my-app --path ./apps
+```
+
+Creates a scaffold with `truffile.yaml`, foreground/background entry points, and a default icon.
+
+### Validate an app
+
+```bash
+truffile validate ./my-app
+```
+
+Checks your `truffile.yaml` configuration and Python file syntax.
+
+### Deploy an app
+
+```bash
+# deploy from current directory
+truffile deploy
+
+# deploy from a path
+truffile deploy ./my-app
+
+# dry run — show the deploy plan without touching the device
+truffile deploy --dry-run
+
+# interactive mode — opens a terminal inside the app container
+truffile deploy -i
+```
+
+The deploy process:
+1. Validates `truffile.yaml` and Python syntax
+2. Resolves app shape (foreground, background, or both)
+3. Uploads files and runs installation steps
+4. Registers the app with the device
+
+<Tip>
+Use `truffile deploy -i` to open a shell inside your app's container. Useful for debugging, installing extra dependencies, or testing your app manually before finalizing.
+</Tip>
+
+### List apps and devices
+
+```bash
+truffile list apps      # installed apps on the connected device
+truffile list devices   # devices you have saved credentials for
+```
+
+### Delete apps
+
+```bash
+# interactive picker
+truffile delete
+
+# delete all apps
+truffile delete all
+
+# delete by index (1-based, as shown in the app list)
+truffile delete 1 2 3
+
+# comma-separated works too
+truffile delete 1,3,5
+
+# pipe selection
+echo "all" | truffile delete
+echo "1 2" | truffile delete
+```
+
+If you pass indices that are out of range or invalid, the CLI falls back to the interactive picker (when running in a terminal).
+
+### List models
+
+```bash
+truffile models
+```
+
+Shows all inference models available on the connected device.
+
+---
+
+## Chat vs Infer
+
+Both modes let you talk to models on your Truffle, but they serve different purposes:
+
+| | Chat | Infer |
+|---|---|---|
+| **What it is** | Agent with tasks, apps, and tool use | Direct model inference REPL |
+| **Command** | `truffile chat` (or just `truffile`) | `truffile infer` |
+| **Conversations** | Persistent tasks you can resume | In-memory history, cleared on exit |
+| **Apps** | Installed apps available as `/<appname>` | No app integration |
+| **MCP** | No MCP (apps provide tools) | Full MCP support via `/mcp connect` |
+| **Image input** | Not available | `/attach <path-or-url>` |
+| **Generation control** | Managed by the agent | Full control (`/reasoning`, `/stream`, `/temperature`, etc.) |
+| **Built-in tools** | Agent decides tool use | `web_search` + `web_fetch` (toggleable) |
+| **Best for** | Using your Truffle day-to-day | Testing models, MCP servers, and prompts |
 
 ---
 
@@ -243,27 +435,19 @@ See the [Inference](/sdk/inference) page for full command details.
 
 | Command | Description |
 |---------|-------------|
-| `truffile` | Show help menu |
-| `truffile -h` | Show help menu |
+| `truffile` | Start chat (default) |
 | `truffile scan` | Scan network for Truffle devices |
-| `truffile connect <device>` | Connect to a specific device |
-| `truffile disconnect <device>` | Disconnect from a specific device |
-| `truffile disconnect all` | Disconnect from all devices |
-| `truffile create [name]` | Create a new app scaffold |
-| `truffile create [name] --path <dir>` | Create scaffold in a specific base directory |
-| `truffile deploy` | Deploy app from current directory |
-| `truffile deploy <path>` | Deploy app from specified path |
-| `truffile deploy -i` | Deploy with interactive terminal |
+| `truffile connect <device>` | Connect to a device |
+| `truffile disconnect [device\|all]` | Disconnect and clear credentials |
+| `truffile create [name] [--path <dir>]` | Scaffold a new app |
 | `truffile validate [path]` | Validate app config and sources |
-| `truffile delete` | Delete installed apps from connected device |
+| `truffile deploy [path]` | Deploy app to connected device |
+| `truffile deploy --dry-run` | Show deploy plan without changes |
+| `truffile deploy -i` | Deploy with interactive terminal |
 | `truffile list apps` | List installed apps |
 | `truffile list devices` | List connected devices |
+| `truffile delete [all\|1 2 3]` | Delete apps (interactive, by index, or all) |
 | `truffile models` | List models on connected device |
-| `truffile chat` | Start chat REPL |
-
----
-
-## Next Steps
-
-- Ready to build your own apps? Check out the [Building Apps](/sdk/building-apps) guide.
-- Want to use your Truffle for AI inference? See the [Inference](/sdk/inference) guide.
+| `truffile chat [--resume]` | Agent chat REPL |
+| `truffile infer [--model M] [--system S]` | Raw inference REPL |
+| `truffile help` | Show help |

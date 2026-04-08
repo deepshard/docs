@@ -1,122 +1,31 @@
 ---
-title: Inference
-description: "Use models and chat on your Truffle, including image attachments in chat"
+title: Inference API
+description: "Use the Truffle inference HTTP endpoints directly for model listing and chat completions"
 ---
 
-Your Truffle exposes inference directly over `/if2/v1/*`.
+Your Truffle exposes an OpenAI-compatible inference API at `/if2/v1/*`. You can use it via the CLI or call the HTTP endpoints directly.
 
-- `truffile models` — list models on your connected device
-- `truffile chat` — interactive chat REPL (runtime config is done with `/` commands)
+<Note>
+For the interactive CLI experience (`truffile infer`), see the [CLI guide](/sdk/cli#infer-mode). This page covers the raw HTTP endpoints.
+</Note>
 
 ---
 
-## Quick Start
+## List Models
 
-### 1) List models
+```bash
+curl -sS http://<device-host>/if2/v1/models | python -m json.tool
+```
+
+Or via the CLI:
 
 ```bash
 truffile models
 ```
 
-This calls the device endpoint:
-
-- `GET /if2/v1/models`
-
 ---
 
-### 2) Start chat REPL
-
-```bash
-truffile chat
-```
-
-`truffile chat` is REPL-first. Use slash commands inside chat to configure behavior live.
-
-Chat requests are sent to:
-
-- `POST /if2/v1/chat/completions`
-
----
-
-## Image Input in Chat
-
-Use `/attach` to attach an image to the next user message.
-
-Local file:
-
-```text
-truffile chat
-/attach ./my-image.png
-What is in this image?
-```
-
-Remote URL:
-
-```text
-truffile chat
-/attach https://example.com/image.jpg
-Describe this scene briefly.
-```
-
-After the next prompt is sent, the pending attachment is cleared.
-
----
-
-## Chat Commands
-
-Use `/help` in REPL to list commands.
-
-### Core REPL commands
-
-| Command | What it does |
-|---------|---------------|
-| `/help` or `/` | Show available commands |
-| `/history` | Show current conversation history summary |
-| `/reset` | Clear current conversation state |
-| `/models` | Open model picker and switch active model |
-| `/attach <path-or-url>` | Attach image (local path or `http(s)` URL) for next message |
-| `/config` | Show current chat config values |
-| `/exit` or `/quit` | Exit chat |
-
-### Generation controls
-
-| Command | What it does |
-|---------|---------------|
-| `/reasoning on\|off` | Toggle reasoning output |
-| `/stream on\|off` | Toggle streaming output |
-| `/json on\|off` | Toggle JSON response mode |
-| `/tools on\|off` | Toggle built-in default tools (`web_search`, `web_fetch`) |
-| `/max_tokens <int>` | Set max output tokens |
-| `/temperature <float\|off>` | Set/clear temperature |
-| `/top_p <float\|off>` | Set/clear top-p |
-| `/max_rounds <int>` | Set max assistant/tool loop rounds |
-| `/system <text>` | Set system prompt |
-| `/system clear` | Clear system prompt |
-
-### MCP in chat
-
-| Command | What it does |
-|---------|---------------|
-| `/mcp status` | Show connected MCP endpoint + tool count |
-| `/mcp connect <streamable-http-url>` | Connect external MCP server |
-| `/mcp tools` | List tools from connected MCP |
-| `/mcp disconnect` | Disconnect MCP session |
-
-`/mcp connect` expects an HTTP(S) streamable MCP endpoint.
-
----
-
-## Direct HTTP Endpoints
-
-Use your device hostname/IP directly when needed.
-
-List models:
-
-```bash
-curl -sS http://<device-host>/if2/v1/models
-```
-
-Chat completion:
+## Chat Completions
 
 ```bash
 curl -sS http://<device-host>/if2/v1/chat/completions \
@@ -129,36 +38,55 @@ curl -sS http://<device-host>/if2/v1/chat/completions \
   }'
 ```
 
+### Request body
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `model` | `string` | Model ID or UUID (from `/models`) |
+| `messages` | `array` | Conversation messages (`role` + `content`) |
+| `stream` | `bool` | Stream response tokens via SSE (default `false`) |
+| `max_tokens` | `int` | Maximum output tokens |
+| `temperature` | `float` | Sampling temperature |
+| `top_p` | `float` | Nucleus sampling parameter |
+| `reasoning` | `object` | `{"enabled": true}` to enable reasoning output |
+| `tools` | `array` | OpenAI-format tool definitions |
+| `tool_choice` | `string` | `"auto"` to let the model decide |
+
+### Streaming
+
+Set `"stream": true` and optionally `"stream_options": {"include_usage": true}` to get token usage in the final event.
+
+The response is an SSE stream of `data: {...}` lines, terminated by `data: [DONE]`.
+
+Each event contains a `choices[0].delta` object with incremental `content`, `reasoning`, and/or `tool_calls`.
+
+### Image input
+
+Pass images as part of a message's `content` array:
+
+```json
+{
+  "role": "user",
+  "content": [
+    {"type": "text", "text": "What is in this image?"},
+    {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}
+  ]
+}
+```
+
+Supported image types: `image/jpeg`, `image/png`, `image/bmp`.
+
 ---
 
-## MCP Testing Workflow (Local and Hosted)
+## MCP Testing with the CLI
 
-`truffile chat` can be used as an MCP integration test harness before app deployment.
+`truffile infer` doubles as an MCP test harness. Start your MCP server locally, then:
 
-### Local MCP test
+```
+truffile infer
+> /mcp connect http://127.0.0.1:8000/mcp
+> /mcp tools
+> use the get_markets tool to show me current markets
+```
 
-1. Start your local MCP server with streamable HTTP transport.
-2. In chat, connect it:
-   - `/mcp connect http://127.0.0.1:8000/mcp`
-3. Verify discovered tools:
-   - `/mcp tools`
-4. Ask for explicit tool use and verify calls in output.
-
-### Hosted MCP test (Exa example)
-
-Use a hosted MCP endpoint exactly the same way:
-
-- `/mcp connect https://mcp.exa.ai/mcp?exaApiKey=<EXA_API_KEY>&tools=web_search_exa,web_search_advanced_exa,get_code_context_exa,crawling_exa,company_research_exa,people_search_exa,deep_researcher_start,deep_researcher_check`
-- `/mcp tools`
-- prompt example: `use the company research exa tool to find me information about OpenAI`
-
----
-
-## Command Reference
-
-| Command | Purpose |
-|---------|---------|
-| `truffile models` | List models on connected Truffle |
-| `truffile chat` | Start interactive chat REPL |
-
----
+See the [CLI guide](/sdk/cli#mcp-integration) for full details.
