@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Truffle — Weekly Update</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F4F3;          /* warm-neutral off-white, like the book paper */
+    --paper:#FAFAF9;
+    --ink:#0E0E0E;
+    --ink-2:#2A2A2A;
+    --muted:#7A7A78;
+    --muted-2:#A8A8A6;
+    --line:#C6C6C2;
+    --line-2:#DBDBD7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;color:var(--ink);background:var(--bg);font-family:'Inter Tight',system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{padding:56px 24px 96px;min-height:100vh}
+
+  .shell{max-width:620px;margin:0 auto}
+
+  /* monospace label shared by small editorial labels */
+  .mono{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+  /* --- masthead --- */
+  .masthead{
+    display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;
+    padding-bottom:14px;border-bottom:1px solid var(--line);
+  }
+  .masthead .left{display:flex;flex-direction:column;gap:4px}
+  .masthead .logo img{height:18px;width:auto;display:block}
+  .masthead .right{text-align:right;line-height:1.5}
+
+  /* editorial meta strip under the masthead — looks like printed cataloging data */
+  .catalog{
+    display:grid;grid-template-columns:repeat(3, 1fr);gap:0;
+    border-bottom:1px solid var(--line);
+  }
+  .catalog .cell{
+    padding:12px 10px 14px;border-right:1px solid var(--line);
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .catalog .cell:last-child{border-right:0}
+  .catalog .k{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .catalog .v{font-size:12.5px;color:var(--ink);font-weight:500;line-height:1.3}
+
+  /* --- hero opener --- */
+  .opener{padding:44px 0 8px}
+  .opener .greet{
+    font-weight:400;font-size:30px;line-height:1.18;letter-spacing:-.02em;
+    color:var(--ink);max-width:560px;text-wrap:balance;margin:0;
+  }
+  .opener .greet em{font-style:normal;color:var(--muted)}
+  .opener p.intro{
+    margin:18px 0 0;max-width:520px;color:var(--ink-2);
+    font-size:14.5px;line-height:1.6;
+  }
+
+  /* --- section header: hairline above + small mono label --- */
+  .sec-head{
+    margin:52px 0 18px;padding-top:14px;
+    border-top:1px solid var(--line);
+    display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:baseline;
+  }
+  .sec-head .idx{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--ink);text-transform:uppercase;font-weight:500}
+  .sec-head .name{font-weight:500;font-size:18px;letter-spacing:-.01em;color:var(--ink)}
+  .sec-head .count{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;justify-self:end}
+
+  /* --- update entry: just type, no card --- */
+  .entry{
+    padding:18px 0;border-top:1px solid var(--line);
+  }
+  .entry:first-of-type{border-top:0;padding-top:4px}
+  .entry-head{
+    display:grid;grid-template-columns:1fr auto;gap:14px;align-items:baseline;margin-bottom:6px;
+  }
+  .entry-head .label{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+  .entry-head .ver{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;color:var(--muted);text-align:right}
+  .entry h3{
+    margin:4px 0 0;font-weight:500;font-size:19px;line-height:1.3;letter-spacing:-.012em;
+    color:var(--ink);text-wrap:balance;
+  }
+  .entry .body{margin-top:10px}
+  .entry .body p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.65}
+  .entry .body p + p{margin-top:8px}
+  .entry .body a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ink)}
+  .entry .body a:hover{background:var(--ink);color:var(--bg)}
+  .entry code{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink);background:transparent;border-bottom:1px dotted var(--muted)}
+
+  /* --- per-update media gallery --- */
+  .media-grid{
+    margin-top:14px;
+    display:block;
+  }
+  .media-card{
+    border:1px solid var(--line-2);
+    border-radius:14px;
+    background:var(--paper);
+    overflow:hidden;
+    position:relative;
+  }
+  .media-link{
+    display:block;
+    border-bottom:0 !important;
+    color:inherit !important;
+    text-decoration:none !important;
+    background:transparent !important;
+    cursor:pointer;
+  }
+  .media-link:hover,
+  .media-link:active,
+  .media-link:focus{
+    border-bottom:0 !important;
+    color:inherit !important;
+    text-decoration:none !important;
+    background:transparent !important;
+  }
+  .media-thumb{
+    display:block;
+    width:100%;
+    aspect-ratio:16/10;
+    object-fit:cover;
+    background:#e8e8e6;
+  }
+
+  /* --- FYI / Note section: like entries but subtly tinted --- */
+  .note{
+    padding:18px 0;border-top:1px solid var(--line);
+  }
+  .note:first-of-type{border-top:0;padding-top:4px}
+  .note .label{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px;display:block}
+  .note h3{margin:2px 0 0;font-weight:500;font-size:19px;line-height:1.3;letter-spacing:-.012em;color:var(--ink);text-wrap:balance}
+  .note .body{margin-top:10px}
+  .note .body p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.65}
+  .note .body p + p{margin-top:8px}
+  .note .body a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ink)}
+  .note .body a:hover{background:var(--ink);color:var(--bg)}
+  .note code{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink);border-bottom:1px dotted var(--muted)}
+
+  /* --- sign-off --- */
+  .signoff{
+    margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:14.5px;line-height:1.65;color:var(--ink-2);
+  }
+  .signoff p{margin:0}
+  .signoff .warm{margin-top:10px;font-style:italic;color:var(--ink)}
+  .signoff .name{margin-top:8px;font-weight:500;color:var(--ink)}
+
+  /* --- footer --- */
+  footer{
+    margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+    color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  footer .row{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+  footer a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+
+  /* load error */
+  .loaderr{
+    margin:80px auto;max-width:520px;padding:22px 24px;border:1px solid var(--line);background:var(--paper);
+    font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;color:var(--ink-2);
+  }
+  .loaderr b{color:var(--ink)}
+  .loaderr code{background:#fff;border:1px solid var(--line-2);padding:1px 6px;border-radius:4px}
+
+  /* --- preview bar (not included in downloaded html) --- */
+  .preview-bar{
+    position:sticky;top:0;z-index:50;
+    margin:-56px -24px 40px;padding:14px 24px;
+    background:#B4322A;color:#fff;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    border-bottom:1px solid #8a2620;
+  }
+  .preview-bar .pv-title{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .preview-bar .pv-title::before{
+    content:"";width:7px;height:7px;border-radius:50%;background:#fff;
+    box-shadow:0 0 10px 1px rgba(255,255,255,.7);
+  }
+  .preview-bar .pv-sub{font-family:'JetBrains Mono',monospace;font-size:10.5px;opacity:.7;letter-spacing:.04em}
+  .preview-bar button{
+    appearance:none;border:1px solid rgba(255,255,255,.9);background:#fff;color:#B4322A;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+    padding:9px 16px;border-radius:999px;cursor:pointer;
+  }
+  .preview-bar button:hover{background:#f3f3f3}
+  @media (max-width:520px){
+    .preview-bar{margin:-28px -16px 28px;padding:12px 16px;flex-direction:column;align-items:flex-start;gap:8px}
+    .preview-bar button{align-self:flex-end}
+  }
+
+  @media (max-width:520px){
+    body{padding:28px 16px 60px}
+    .opener .greet{font-size:24px}
+    .catalog{grid-template-columns:repeat(3,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<div class="preview-bar" id="previewBar">
+  <span class="pv-title">Preview <span class="pv-sub">— live from updates/current.md</span></span>
+  <button id="downloadBtn">Download HTML</button>
+</div>
+
+<div class="shell" id="root">
+  <div class="loaderr">Loading <code>updates/current.md</code>…</div>
+</div>
+
+<script>
+/* Markdown-driven renderer. Edit updates/current.md and refresh. */
+
+const TRUFFLE_LOGO_URL = 'https://i.postimg.cc/qRpKnP1N/truffle-logo-outlined-black.png';
+/** Mailchimp audience merge tag — must match Audience → merge tags (default first name). */
+const MAILCHIMP_FNAME_MERGE = '*|FNAME|*';
+/** Shown in the browser preview only; exported email uses MAILCHIMP_FNAME_MERGE instead of CUSTOMER NAME. */
+const PREVIEW_FNAME_STANDIN = 'Alex';
+
+/**
+ * Put *|FNAME|* in greeting (Mailchimp merge tag) — preview shows PREVIEW_FNAME_STANDIN instead.
+ * Legacy: "CUSTOMER NAME" is still replaced with *|FNAME|* on export only.
+ */
+function personalizeGreeting(s, forMailchimp){
+  let t = String(s || '');
+  if(forMailchimp){
+    return t.replace(/\bCUSTOMER NAME\b/gi, MAILCHIMP_FNAME_MERGE);
+  }
+  return t
+    .replace(/\bCUSTOMER NAME\b/gi, PREVIEW_FNAME_STANDIN)
+    .replace(/\*\|FNAME\|\*/g, PREVIEW_FNAME_STANDIN);
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function inlineMd(s){
+  let out = escapeHtml(s);
+  out = out.replace(/`([^`]+)`/g, (_,t)=>`<code>${t}</code>`);
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,t,u)=>`<a href="${u}">${t}</a>`);
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return out;
+}
+function paraMd(s){
+  return String(s).split(/\n{2,}/).map(p => `<p>${inlineMd(p.trim()).replace(/\n/g,'<br/>')}</p>`).join('');
+}
+/** Email + preview: only absolute URLs (hosted on your CDN / server). */
+function normalizeMediaUrl(s){
+  const val = String(s || '').trim();
+  if(!val) return '';
+  if(/^https:\/\/[^/]/i.test(val)) return val;
+  if(/^http:\/\/[^/]/i.test(val)) return val;
+  if(/^\/\//.test(val)) return 'https:' + val;
+  return '';
+}
+function isProbablyImageUrl(url){
+  return /\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(String(url || ''));
+}
+/**
+ * videos: list entries. Per line:
+ * - one URL (YouTube page or direct .mp4, etc.)
+ * - poster, video — two https URLs comma-separated (poster must look like an image)
+ * - or two lines: image URL line then video URL line
+ */
+function parseVideoEntries(raw){
+  if(!raw) return [];
+  const rows = [];
+  String(raw).split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if(!trimmed) return;
+    const match = trimmed.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    const candidate = match ? match[2] : trimmed.replace(/^[-*]\s*/, '');
+    const urls = candidate.split(',').map(s => normalizeMediaUrl(s.trim())).filter(Boolean);
+    if(urls.length) rows.push(urls);
+  });
+  const out = [];
+  for(let idx = 0; idx < rows.length; idx++){
+    const urls = rows[idx];
+    if(urls.length >= 2 && isProbablyImageUrl(urls[0])){
+      out.push({ url: urls[1], poster: urls[0] });
+      continue;
+    }
+    if(urls.length >= 2){
+      urls.forEach(u => out.push({ url: u, poster: '' }));
+      continue;
+    }
+    if(urls.length === 1){
+      const u = urls[0];
+      const nextRow = rows[idx + 1];
+      if(isProbablyImageUrl(u) && nextRow && nextRow.length === 1 && !isProbablyImageUrl(nextRow[0])){
+        out.push({ url: nextRow[0], poster: u });
+        idx++;
+        continue;
+      }
+      out.push({ url: u, poster: '' });
+    }
+  }
+  return out;
+}
+/** Shown until the first frame decodes (and if loading is blocked you still see a tile). */
+const DIRECT_MP4_POSTER = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect fill="#262626" width="320" height="200"/><polygon fill="rgba(255,255,255,0.88)" points="124,56 124,144 216,100"/></svg>'
+);
+/** YouTube watch / shorts / embed → thumbnail (works in preview + email). */
+function youtubeVideoId(url){
+  try{
+    const u = new URL(url);
+    const h = u.hostname.replace(/^www\./i,'');
+    if(h === 'youtu.be'){
+      const id = u.pathname.replace(/^\//,'').split('/')[0];
+      return /^[a-zA-Z0-9_-]{11}$/.test(id||'') ? id : '';
+    }
+    if(h === 'youtube.com' || h.endsWith('.youtube.com')){
+      if(u.pathname.startsWith('/watch')){
+        const v = new URLSearchParams(u.search).get('v');
+        return v && /^[a-zA-Z0-9_-]{11}$/.test(v) ? v : '';
+      }
+      const p = u.pathname.split('/').filter(Boolean);
+      if(p[0]==='embed' && p[1]) return /^[a-zA-Z0-9_-]{11}$/.test(p[1]) ? p[1] : '';
+      if(p[0]==='shorts' && p[1]) return /^[a-zA-Z0-9_-]{11}$/.test(p[1]) ? p[1] : '';
+    }
+  }catch(e){}
+  return '';
+}
+function youtubePosterFromUrl(url){
+  const id = youtubeVideoId(url);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
+}
+function isDirectVideoFileUrl(url){
+  return /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(String(url||''));
+}
+function parseMediaList(raw){
+  if(!raw) return [];
+  const out = [];
+  String(raw).split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if(!trimmed) return;
+    const match = trimmed.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    const candidate = match ? match[2] : trimmed.replace(/^[-*]\s*/, '');
+    const url = normalizeMediaUrl(candidate.split(/[,\s]+/)[0]);
+    if(url) out.push(url);
+  });
+  return [...new Set(out)];
+}
+function chunkArray(items, size){
+  const out = [];
+  for(let i=0; i<items.length; i+=size) out.push(items.slice(i, i + size));
+  return out;
+}
+function renderMediaRow(items, columns){
+  const cellWidth = (100 / columns).toFixed(2) + '%';
+  const cells = items.map(m => `
+    <td width="${cellWidth}" valign="top" style="padding:0 6px 12px;">
+      ${renderMediaCard(m.url, m.type, m.poster || '')}
+    </td>
+  `).join('');
+  const filler = Array.from({ length: Math.max(0, columns - items.length) }).map(() => `
+    <td width="${cellWidth}" valign="top" style="padding:0 6px 12px;font-size:0;line-height:0;">&nbsp;</td>
+  `).join('');
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+      <tr>${cells}${filler}</tr>
+    </table>
+  `;
+}
+function videoPlayOverlayInner(){
+  return `<div style="width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;">
+      <span style="font-size:18px;line-height:1;color:#fff;margin-left:2px;">&#9654;</span>
+    </div>`;
+}
+/**
+ * Do not wrap <video> in <a> — it is invalid HTML and breaks playback in several browsers.
+ * Use an absolute full-cell link on top instead.
+ */
+function renderMediaCard(url, type, poster){
+  const safeUrl = escapeHtml(url);
+  const hostedPoster = poster && isProbablyImageUrl(poster) ? poster : '';
+  if(type === 'video'){
+    const ytPoster = youtubePosterFromUrl(url);
+    if(ytPoster){
+      const safePoster = escapeHtml(hostedPoster || ytPoster);
+      return `
+        <div class="media-card video" style="position:relative;width:100%;border:1px solid #D4D4D0;border-radius:14px;overflow:hidden;background:#171717;">
+          <img src="${safePoster}" alt="" class="media-thumb" width="600" style="display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#171717;"/>
+          <a class="media-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Play video" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-decoration:none;border:0;background:transparent;cursor:pointer;">
+            ${videoPlayOverlayInner()}
+          </a>
+        </div>`;
+    }
+    if(isDirectVideoFileUrl(url)){
+      const posterAttr = escapeHtml(hostedPoster || DIRECT_MP4_POSTER);
+      return `
+        <div class="media-card video" style="position:relative;width:100%;border:1px solid #D4D4D0;border-radius:14px;overflow:hidden;background:#171717;">
+          <video preload="auto" muted playsinline poster="${posterAttr}" style="display:block;width:100%;min-height:120px;aspect-ratio:16/10;object-fit:cover;background:#171717;" src="${safeUrl}#t=0.001"></video>
+          <a class="media-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Play video" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-decoration:none;border:0;background:transparent;cursor:pointer;">
+            ${videoPlayOverlayInner()}
+          </a>
+        </div>`;
+    }
+    return `
+        <div class="media-card video" style="position:relative;width:100%;border:1px solid #D4D4D0;border-radius:14px;overflow:hidden;background:#1a1a1a;aspect-ratio:16/10;min-height:140px;">
+          <a class="media-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-decoration:none;border:0;color:#fff;">
+            ${videoPlayOverlayInner()}
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#b0b0ae;">Watch video</span>
+          </a>
+        </div>`;
+  }
+  return `
+    <a class="media-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;border:0;">
+      <img src="${safeUrl}" alt="Image" style="display:block;width:100%;max-width:100%;height:auto;border:1px solid #D4D4D0;border-radius:14px;outline:none;text-decoration:none;background:#FFFFFF;" />
+    </a>
+  `;
+}
+function renderMediaGallery(item){
+  const imageUrls = parseMediaList(item.images);
+  const videoEntries = parseVideoEntries(item.videos);
+  const mediaItems = [
+    ...imageUrls.map(url => ({ url, type:'image', poster:'' })),
+    ...videoEntries.map(({ url, poster }) => ({ url, type:'video', poster: poster || '' }))
+  ];
+  if(!mediaItems.length) return '';
+  const rows = chunkArray(mediaItems, 3).map(row => renderMediaRow(row, 3)).join('');
+  return `<div class="media-grid" style="margin-top:16px;">${rows}</div>`;
+}
+
+function parseSource(src){
+  const lines = src.replace(/\r\n/g,'\n').split('\n');
+  const doc = { meta:{}, sections:[], footer:{} };
+
+  let i = 0;
+  if((lines[i]||'').trim()==='---'){
+    i++;
+    while(i<lines.length && lines[i].trim()!=='---'){
+      const m = lines[i].match(/^([a-z_]+):\s*(.*)$/i);
+      if(m) doc.meta[m[1]] = m[2];
+      i++;
+    }
+    i++;
+  }
+
+  let currentSection = null;
+  let currentItem = null;
+  let pendingKey = null;
+  let inFooter = false;
+
+  function commitItem(){
+    if(currentItem && currentSection){
+      currentItem.body = (currentItem.body||'').trim();
+      currentSection.items.push(currentItem);
+      currentItem = null; pendingKey = null;
+    }
+  }
+  function commitSection(){
+    commitItem();
+    if(currentSection) doc.sections.push(currentSection);
+    currentSection = null;
+  }
+
+  for(; i<lines.length; i++){
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if(/^#\s+/.test(trimmed)){
+      commitSection();
+      currentSection = { name: trimmed.replace(/^#\s+/,'').trim(), items: [] };
+      inFooter = false;
+      continue;
+    }
+    if(/^##\s+/.test(trimmed)){
+      commitItem();
+      // kind is "Update" or "Note" (or any ## heading text)
+      currentItem = { kind: trimmed.replace(/^##\s+/,'').trim(), title:'', version:'', body:'', images:'', videos:'' };
+      pendingKey = null;
+      continue;
+    }
+    if(trimmed==='---'){
+      commitSection();
+      inFooter = true;
+      continue;
+    }
+
+    if(inFooter){
+      const m = line.match(/^([a-z_0-9]+):\s*(.*)$/i);
+      if(m){
+        pendingKey = m[1];
+        doc.footer[pendingKey] = m[2];
+      } else if(pendingKey && line!==''){
+        doc.footer[pendingKey] += '\n' + line;
+      } else if(line===''){
+        pendingKey = null;
+      }
+      continue;
+    }
+
+    if(currentItem){
+      const m = line.match(/^([a-z_]+):\s*(.*)$/i);
+      if(m && ['title','version','body','images','videos'].includes(m[1])){
+        pendingKey = m[1];
+        currentItem[pendingKey] = m[2];
+      } else if(pendingKey){
+        currentItem[pendingKey] += (currentItem[pendingKey] ? '\n' : '') + line;
+      }
+    }
+  }
+  commitSection();
+  return doc;
+}
+
+function renderSection(section, idx){
+  const items = section.items;
+  if(!items.length) return '';
+
+  const slug = section.name.toLowerCase();
+  const isNoteStyle = slug === 'note' || slug === 'notes' || slug === 'fyi';
+  const count = items.length;
+  const idxStr = String(idx).padStart(2,'0');
+  const countSuffix = slug === 'fyi'
+    ? (count === 1 ? 'item' : 'items')
+    : isNoteStyle
+      ? (count === 1 ? 'note' : 'notes')
+      : (count === 1 ? 'entry' : 'entries');
+
+  const entriesHtml = items.map((u, itemIdx) => {
+    if(isNoteStyle){
+      return `
+        <div class="note" style="padding:18px 0;${itemIdx === 0 ? 'border-top:0;padding-top:4px;' : 'border-top:1px solid #C6C6C2;'}">
+          <span class="label">${escapeHtml(section.name)}</span>
+          ${u.title ? `<h3>${inlineMd(u.title)}</h3>` : ''}
+          <div class="body">${paraMd(u.body||'')}</div>
+          ${renderMediaGallery(u)}
+        </div>
+      `;
+    }
+    return `
+      <article class="entry" style="padding:18px 0;${itemIdx === 0 ? 'border-top:0;padding-top:4px;' : 'border-top:1px solid #C6C6C2;'}">
+        <div class="entry-head">
+          <span class="label">${escapeHtml(section.name)}</span>
+          <span class="ver">${escapeHtml(u.version||'')}</span>
+        </div>
+        ${u.title ? `<h3>${inlineMd(u.title)}</h3>` : ''}
+        <div class="body">${paraMd(u.body||'')}</div>
+        ${renderMediaGallery(u)}
+      </article>
+    `;
+  }).join('');
+
+  return `
+    <div class="sec-head" style="margin:52px 0 18px;padding-top:14px;border-top:1px solid #C6C6C2;">
+      <span class="idx">${idxStr}</span>
+      <span class="name">${escapeHtml(section.name)}</span>
+      <span class="count">${count} ${countSuffix}</span>
+    </div>
+    ${entriesHtml}
+  `;
+}
+
+function render(doc){
+  const m = doc.meta;
+  const sections = doc.sections.filter(s => s.items.length > 0);
+  const f = doc.footer;
+
+  const sectionsHtml = sections.map((s, i) => renderSection(s, i+1)).join('');
+
+  return `
+    <header class="masthead" style="padding-bottom:14px;border-bottom:1px solid #C6C6C2;">
+      <div class="left">
+        <div class="logo"><img src="${TRUFFLE_LOGO_URL}" alt="Truffle" /></div>
+      </div>
+      <div class="right mono">
+        ${inlineMd(m.dates||'')}
+      </div>
+    </header>
+
+    <section class="opener">
+      ${m.greeting ? `<h1 class="greet">${inlineMd(personalizeGreeting(m.greeting, false))},<br/><em>hope you're doing well.</em></h1>` : ''}
+      ${m.intro ? `<p class="intro">${inlineMd(m.intro)}</p>` : ''}
+    </section>
+
+    ${sectionsHtml}
+
+    ${f.signoff ? `
+      <div class="signoff" style="margin-top:52px;padding-top:18px;border-top:1px solid #C6C6C2;">
+        <p>${inlineMd(f.signoff)}</p>
+        ${f.sign_warm ? `<p class="warm">${inlineMd(f.sign_warm)}</p>` : ''}
+        ${f.sign_name ? `<p class="name">${inlineMd(f.sign_name)}</p>` : ''}
+      </div>
+    ` : ''}
+
+    <footer style="margin-top:40px;padding-top:16px;border-top:1px solid #C6C6C2;">
+      <div class="row">
+        <span>Somewhere in Los Angeles, CA</span>
+        <span>+1 215-221-9301</span>
+      </div>
+    </footer>
+  `;
+}
+
+async function load(){
+  try{
+    const res = await fetch('updates/current.md');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const src = await res.text();
+    const doc = parseSource(src);
+    document.getElementById('root').innerHTML = render(doc);
+  }catch(err){
+    document.getElementById('root').innerHTML = `
+      <div class="loaderr">
+        <b>Could not load <code>updates/current.md</code></b><br/>
+        ${escapeHtml(err.message)}<br/><br/>
+        Make sure the file exists at <code>updates/current.md</code> next to this HTML file, and that you're opening this page through a server (not <code>file://</code>).
+      </div>
+    `;
+  }
+}
+load();
+
+/* ---- Email-specific rendering: table-based, all inline styles, Mailchimp-safe ---- */
+/* Mailchimp strips <head>/<body> tags, so all CSS must be inline.                     */
+/* Dividers use Mailchimp's own pattern: border-top on a nested <table>.               */
+/* _tb is appended to every <table> style for Outlook table-spacing reset.             */
+const _ff = "'Inter Tight',Arial,Helvetica,sans-serif";
+const _fm = "'JetBrains Mono','Courier New',Courier,monospace";
+const _tb = 'border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;';
+
+function emailInlineMd(s){
+  let out = escapeHtml(s);
+  out = out.replace(/`([^`]+)`/g, (_,t)=>`<code style="font-family:${_fm};font-size:12.5px;color:#0E0E0E;">${t}</code>`);
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,t,u)=>`<a href="${u}" target="_blank" style="color:#0E0E0E;text-decoration:underline;">${t}</a>`);
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return out;
+}
+function emailParaMd(s){
+  return String(s).split(/\n{2,}/).map((p,i)=>`<p style="margin:${i>0?'8':'0'}px 0 0 0;padding:0;">${emailInlineMd(p.trim()).replace(/\n/g,'<br/>')}</p>`).join('');
+}
+
+function emailMediaCard(url, type, poster){
+  const safeUrl = escapeHtml(url);
+  if(type === 'video'){
+    const ytPoster = youtubePosterFromUrl(url);
+    if(ytPoster){
+      const safePoster = escapeHtml((poster && isProbablyImageUrl(poster)) ? poster : ytPoster);
+      return `<a href="${safeUrl}" target="_blank" style="text-decoration:none;">
+        <img src="${safePoster}" alt="Play video" width="600" border="0" style="display:block;width:100%;max-width:100%;height:auto;outline:none;text-decoration:none;border:1px solid #D4D4D0;border-radius:14px;background:#171717;"/></a>`;
+    }
+    if(poster && isProbablyImageUrl(poster)){
+      const safePoster = escapeHtml(poster);
+      return `<a href="${safeUrl}" target="_blank" style="text-decoration:none;">
+        <img src="${safePoster}" alt="Play video" width="600" border="0" style="display:block;width:100%;max-width:100%;height:auto;outline:none;text-decoration:none;border:1px solid #D4D4D0;border-radius:14px;background:#171717;"/></a>`;
+    }
+    return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+        <tr><td align="center" valign="middle" height="120" bgcolor="#1a1a1a" style="background-color:#1a1a1a;border-radius:14px;height:120px;">
+          <a href="${safeUrl}" target="_blank" style="display:block;width:100%;height:120px;line-height:120px;text-align:center;color:#ffffff;text-decoration:none;font-size:34px;font-family:Arial,sans-serif;">&#9654;</a>
+        </td></tr></table>`;
+  }
+  return `<a href="${safeUrl}" target="_blank" style="text-decoration:none;">
+      <img src="${safeUrl}" alt="" width="100%" border="0" style="display:block;width:100%;height:auto;outline:none;text-decoration:none;border:0;border-radius:14px;"/></a>`;
+}
+function emailMediaRow(items, columns){
+  const pct = Math.floor(100 / columns);
+  const cells = items.map(m=>`<td width="${pct}%" valign="top" style="padding:0 4px 8px;">${emailMediaCard(m.url, m.type, m.poster || '')}</td>`).join('');
+  const filler = Array.from({length:Math.max(0,columns-items.length)}).map(()=>`<td width="${pct}%" valign="top" style="padding:0 4px 8px;">&nbsp;</td>`).join('');
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}"><tr>${cells}${filler}</tr></table>`;
+}
+function emailMediaGallery(item){
+  const imgs = parseMediaList(item.images);
+  const vids = parseVideoEntries(item.videos);
+  const all = [...imgs.map(u=>({url:u,type:'image',poster:''})), ...vids.map(v=>({url:v.url,type:'video',poster:v.poster||''}))];
+  if(!all.length) return '';
+  return chunkArray(all, 3).map(row=>`
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}"><tr><td style="padding-top:16px;">
+      ${emailMediaRow(row, 3)}
+    </td></tr></table>`).join('');
+}
+
+function emailLine(){
+  return `<tr><td style="padding:0;font-size:0;line-height:0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="min-width:100%;${_tb}border-top:1px solid #C6C6C2;">
+      <tbody><tr><td style="font-size:0;line-height:0;mso-line-height-rule:exactly;" height="0">&nbsp;</td></tr></tbody>
+    </table></td></tr>`;
+}
+function emailSpacer(h){
+  return `<tr><td style="font-size:0;line-height:0;mso-line-height-rule:exactly;" height="${h}">&nbsp;</td></tr>`;
+}
+
+function renderEmailHtml(doc){
+  const m = doc.meta;
+  const sections = doc.sections.filter(s=>s.items.length>0);
+  const f = doc.footer;
+
+  let secHtml = '';
+  sections.forEach((section, sIdx) => {
+    const items = section.items;
+    if(!items.length) return;
+    const slug = section.name.toLowerCase();
+    const isNote = slug==='note'||slug==='notes'||slug==='fyi';
+    const count = items.length;
+    const idx = String(sIdx+1).padStart(2,'0');
+    const unit = slug==='fyi'?(count===1?'item':'items'):isNote?(count===1?'note':'notes'):(count===1?'entry':'entries');
+
+    secHtml += emailSpacer(52) + emailLine();
+    secHtml += `<tr><td style="padding-top:14px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+        <tr>
+          <td width="30" align="left" valign="top" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.08em;color:#0E0E0E;text-transform:uppercase;font-weight:500;">${idx}</td>
+          <td align="left" valign="top" style="font-family:${_ff};font-weight:500;font-size:18px;letter-spacing:-0.01em;color:#0E0E0E;">${escapeHtml(section.name)}</td>
+          <td align="right" valign="top" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.06em;color:#7A7A78;text-transform:uppercase;white-space:nowrap;">${count} ${unit}</td>
+        </tr>
+      </table>
+    </td></tr>`;
+    secHtml += emailSpacer(18);
+
+    items.forEach((u, ii) => {
+      if(ii > 0) secHtml += emailLine();
+      if(isNote){
+        secHtml += `<tr><td style="padding-top:18px;padding-bottom:18px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+            <tr><td style="font-family:${_fm};font-size:10.5px;letter-spacing:0.08em;color:#7A7A78;text-transform:uppercase;padding-bottom:4px;">${escapeHtml(section.name)}</td></tr>
+            ${u.title?`<tr><td><h3 style="margin:2px 0 0;font-family:${_ff};font-weight:500;font-size:19px;line-height:1.3;letter-spacing:-0.012em;color:#0E0E0E;">${emailInlineMd(u.title)}</h3></td></tr>`:''}
+            <tr><td style="padding-top:10px;font-family:${_ff};font-size:14px;line-height:1.65;color:#2A2A2A;">${emailParaMd(u.body||'')}</td></tr>
+          </table>
+          ${emailMediaGallery(u)}
+        </td></tr>`;
+      } else {
+        secHtml += `<tr><td style="padding-top:18px;padding-bottom:18px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+            <tr>
+              <td align="left" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.08em;color:#7A7A78;text-transform:uppercase;">${escapeHtml(section.name)}</td>
+              <td align="right" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.04em;color:#7A7A78;">${escapeHtml(u.version||'')}</td>
+            </tr>
+          </table>
+          ${u.title?`<h3 style="margin:4px 0 0;font-family:${_ff};font-weight:500;font-size:19px;line-height:1.3;letter-spacing:-0.012em;color:#0E0E0E;">${emailInlineMd(u.title)}</h3>`:''}
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+            <tr><td style="padding-top:10px;font-family:${_ff};font-size:14px;line-height:1.65;color:#2A2A2A;">${emailParaMd(u.body||'')}</td></tr>
+          </table>
+          ${emailMediaGallery(u)}
+        </td></tr>`;
+      }
+    });
+  });
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#F4F4F3" style="${_tb}background-color:#F4F4F3;">
+<tr><td align="center" style="padding:56px 24px 96px;font-family:${_ff};">
+  <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="620" align="center"><tr><td><![endif]-->
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="620" align="center" style="${_tb}width:100%;max-width:620px;">
+
+    <tr><td style="padding-bottom:14px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+        <tr>
+          <td align="left" valign="bottom"><img src="${TRUFFLE_LOGO_URL}" alt="Truffle" height="18" border="0" style="height:18px;width:auto;display:block;outline:none;text-decoration:none;border:0;"/></td>
+          <td align="right" valign="bottom" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#7A7A78;line-height:1.5;">${emailInlineMd(m.dates||'')}</td>
+        </tr>
+      </table>
+    </td></tr>
+    ${emailLine()}
+
+    <tr><td style="padding:44px 0 8px;">
+      ${m.greeting?`<h1 style="margin:0;font-family:${_ff};font-weight:400;font-size:30px;line-height:1.18;letter-spacing:-0.02em;color:#0E0E0E;">${emailInlineMd(personalizeGreeting(m.greeting, true))},<br/><span style="color:#7A7A78;">hope you're doing well.</span></h1>`:''}
+      ${m.intro?`<p style="margin:18px 0 0;color:#2A2A2A;font-family:${_ff};font-size:14.5px;line-height:1.6;">${emailInlineMd(m.intro)}</p>`:''}
+    </td></tr>
+
+    ${secHtml}
+
+    ${f.signoff?`${emailSpacer(52)}${emailLine()}<tr><td style="padding-top:18px;font-family:${_ff};font-size:14.5px;line-height:1.65;color:#2A2A2A;">
+      <p style="margin:0;">${emailInlineMd(f.signoff)}</p>
+      ${f.sign_warm?`<p style="margin:10px 0 0;font-style:italic;color:#0E0E0E;">${emailInlineMd(f.sign_warm)}</p>`:''}
+      ${f.sign_name?`<p style="margin:8px 0 0;font-weight:500;color:#0E0E0E;">${emailInlineMd(f.sign_name)}</p>`:''}
+    </td></tr>`:''}
+
+    ${emailSpacer(40)}${emailLine()}
+    <tr><td style="padding-top:16px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${_tb}">
+        <tr>
+          <td align="left" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.04em;text-transform:uppercase;color:#7A7A78;">Somewhere in Los Angeles, CA</td>
+          <td align="right" style="font-family:${_fm};font-size:10.5px;letter-spacing:0.04em;text-transform:uppercase;color:#7A7A78;">+1 215-221-9301</td>
+        </tr>
+      </table>
+    </td></tr>
+
+    ${emailSpacer(24)}${emailLine()}
+    <tr><td style="padding-top:14px;font-family:${_ff};font-size:11px;line-height:1.6;color:#A8A8A6;text-align:center;">
+      <p style="margin:0;">You received this email because you are a Truffle customer.</p>
+      <p style="margin:4px 0 0;"><a href="*|UNSUB|*" target="_blank" style="color:#7A7A78;text-decoration:underline;">Unsubscribe</a></p>
+      <p style="margin:8px 0 0;">*|LIST:ADDRESSLINE|*</p>
+    </td></tr>
+
+  </table>
+  <!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table>`;
+}
+
+/* ---- download: build a self-contained Mailchimp-safe email ---- */
+async function buildDownload(){
+  const res = await fetch('updates/current.md');
+  const src = await res.text();
+  const doc = parseSource(src);
+  let bodyHtml = renderEmailHtml(doc);
+
+  let logoDataUrl = TRUFFLE_LOGO_URL;
+  try{
+    const imgRes = await fetch(TRUFFLE_LOGO_URL);
+    const blob = await imgRes.blob();
+    logoDataUrl = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); });
+  }catch(e){}
+  bodyHtml = bodyHtml.split(TRUFFLE_LOGO_URL).join(logoDataUrl);
+
+  const pageHtml = `<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<title>Truffle Weekly Update</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F4F4F3;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+body,html{margin:0;padding:0;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
+table{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;}
+img{-ms-interpolation-mode:bicubic;border:0;outline:none;text-decoration:none;}
+</style>
+${bodyHtml}
+</body>
+</html>`;
+
+  const blob = new Blob([pageHtml], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const issue = (doc.meta.issue||'').toString().trim() || 'email';
+  a.download = `truffle-weekly-${issue}.html`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  buildDownload().catch(err=>alert('Download failed: '+err.message));
+});
+</script>
+
+</body>
+</html>

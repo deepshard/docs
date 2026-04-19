@@ -70,9 +70,9 @@
         "tab": "Release Notes",
         "groups": [
           {
-            "group": "Changelog",
+            "group": "Release notes",
             "pages": [
-              "release-notes/changelog"
+              "release-notes/index"
             ]
           }
         ]
