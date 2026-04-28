@@ -2,6 +2,9 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Truffle",
+  "appearance": {
+    "default": "light"
+  },
   "llmsTxt": {
     "enabled": true
   },
@@ -128,6 +131,10 @@
   },
   "navbar": {
     "links": [
+      {
+        "label": "Lets Chat?",
+        "href": "https://calendar.app.google/2QHQjz7VCbN2oBzk6"
+      },
       {
         "label": "Support",
         "href": "https://discord.gg/itsalltruffles"
