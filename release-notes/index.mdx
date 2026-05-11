@@ -7,9 +7,48 @@ mode: "wide"
 <div className="xl:w-[calc(100%+10rem)] xl:max-w-none 2xl:w-[calc(100%+14rem)]">
   <AccordionGroup>
     <Accordion
-      title="April 26, 2026"
+      title="May 11, 2026"
       description="Latest release"
       defaultOpen
+    >
+      <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="grid gap-4 border-b border-zinc-200 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8 dark:border-zinc-800">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Symphony
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              Queue and steer!
+            </h3>
+            <ul className="mt-4 space-y-2 text-base leading-7 text-zinc-700 sm:mt-5 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              <li>You can now queue messages and steer the model mid-conversation.</li>
+              <li>Bug fixes including: Check for Update, toggling LED off and on, app installation!</li>
+              <li>You can now set up a password and use that as your primary method of signing in, with recovery codes as a fallback.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Truffle
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              Improved agent on your Truffle!
+            </h3>
+            <ul className="mt-4 space-y-2 text-base leading-7 text-zinc-700 sm:mt-5 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              <li>Improved memory with an embeddings model running locally on your Truffle.</li>
+              <li>A good time to have a chat with your Truffle and get it to know you.</li>
+              <li>Larger context window! Truffle now has a much larger context window, so long-running tasks should feel much better.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Accordion>
+
+    <Accordion
+      title="April 26, 2026"
+      description="Previous release"
     >
       <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
