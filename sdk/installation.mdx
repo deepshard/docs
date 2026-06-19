@@ -101,7 +101,7 @@ truffile help
 You should see the Truffile welcome panel listing every command (`scan`, `connect`, `deploy`, `chat`, `infer`, and the rest). If you see the panel, you're ready to go.
 
 <Note>
-Make sure you've onboarded your Truffle with the Symphony desktop client and grabbed your User ID from **Settings → About** before running `truffile connect`.
+Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Settings → About**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.
 </Note>
 
 ## Agent setup prompt
@@ -120,40 +120,33 @@ Requirements:
 - Activate/use that virtual environment for all Python and pip commands.
 - Install Truffile with `pip install truffile`.
 - Verify the install with `truffile --help`.
-- Do not require a Truffle device to finish setup. If no device is connected yet, tell me how to run `truffile scan` and `truffile connect <device-name> --user-id <user-id>` when I am ready. My user ID is available in Symphony Settings > About.
+- Run `truffile load all` so the bundled skills and example apps are copied into this workspace under `./truffile/skills` and `./truffile/examples`.
+- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then get my User ID from Symphony Settings > About, then run `truffile scan` and `truffile connect <device-name> --user-id <user-id>`. During `truffile connect`, I must approve the new session on my Truffle device.
 
-After installing, inspect the installed Truffile package and tell me where these bundled resources live locally:
-- bundled skills under `truffile/skills`
-- bundled example apps under `truffile/app-store`
-
-You can locate them with Python like this:
-
-python - <<'PY'
-from importlib import resources
-root = resources.files("truffile")
-print("skills:", root / "skills")
-print("example apps:", root / "app-store")
-PY
-
-If you support skills or instruction files, read the relevant bundled Truffile skills before using the CLI:
-- `truffile-cli` for scan/connect/create/validate/deploy/list/delete/obsidian
-- `truffile-chat` for talking to the on-device agent
-- `truffile-infer` for raw model inference and MCP testing
-- `truffle-app-creator` for creating or porting Truffle apps
+After `truffile load all`, inspect the local resources before giving me the onboarding:
+- Read `./truffile/skills/truffile-cli/SKILL.md` for scan/connect/create/validate/deploy/list/delete/obsidian.
+- Read `./truffile/skills/truffile-chat/SKILL.md` for talking to the on-device agent.
+- Read `./truffile/skills/truffile-infer/SKILL.md` for raw model inference and MCP testing.
+- Read `./truffile/skills/truffle-app-creator/SKILL.md` for creating or porting Truffle apps.
+- Skim the example app manifests under `./truffile/examples/*/truffile.yaml` so you know the foreground, background, auth, and install-step patterns available.
+- Run `truffile --help`, `truffile deploy --help`, `truffile chat --help`, and `truffile infer --help` so you know the CLI surface.
 
 When setup is complete, give me a short onboarding that covers:
+- that connecting requires a Symphony-onboarded Truffle, the User ID from Symphony Settings > About, and device approval during `truffile connect`
 - how to connect a Truffle device
 - how to chat with the on-device agent
 - how to use Truffile as an inference endpoint/client
 - how to create, validate, deploy, list, and delete apps
-- where the example apps live inside the installed package
+- where the copied skills and example apps live in this workspace
 - links to the docs:
+  - https://docs.truffle.net/client/overview
   - https://docs.truffle.net/sdk/installation
   - https://docs.truffle.net/sdk/cli
   - https://docs.truffle.net/sdk/building-apps
+- End by asking whether I want to start by making a Truffle app.
 ```
 
-The prompt works because Truffile is CLI-first: every core workflow has explicit arguments, and the package ships with both agent-readable skills and example apps.
+The prompt works because Truffile is CLI-first: every core workflow has explicit arguments, and `truffile load all` gives the agent local skills and example apps to read before it starts building.
 
 ## Next steps
 

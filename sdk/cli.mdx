@@ -24,9 +24,12 @@ test in CI or from another agent:
 truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
 truffile list devices
 truffile list apps --json
+truffile load all
 truffile create my-app --path ./apps
 truffile validate ./apps/my-app
-truffile deploy --dry-run ./apps/my-app
+truffile deploy ./apps/my-app --dry-run --json
+truffile deploy ./apps/my-app --json --non-interactive --replace
+truffile delete my-app
 truffile chat "Summarize my installed apps" --json --quiet --timeout 60
 truffile infer "Say pong" --json --no-stream --quiet
 truffile infer --list-models --json
@@ -66,12 +69,48 @@ Select a device by number to start the connection flow.
 If you already know your device name:
 
 ```bash
-truffile connect truffle-6272
+truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
 ```
 
-You'll be prompted for your **User ID** (found in **Settings > About** in the Truffle desktop client), then asked to approve the connection on your device.
+If you omit `--user-id`, you'll be prompted for your **User ID** (found in **Settings > About** in the Symphony desktop client), then asked to approve the connection on your device.
 
 Credentials are saved locally — subsequent connections are automatic.
+
+<Note>
+Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview), finish device onboarding there, copy your User ID from **Settings > About**, then approve the session on your Truffle when the CLI asks.
+</Note>
+
+---
+
+## Loading agent resources
+
+`truffile` ships with agent-readable skills and example apps. Copy them into
+your current workspace when you want a coding agent to inspect them directly:
+
+```bash
+truffile load all
+```
+
+This creates:
+
+```text
+./truffile/
+  skills/
+  examples/
+```
+
+Use narrower forms when needed:
+
+```bash
+truffile load skills
+truffile load examples
+truffile load all --force
+truffile load all --json
+```
+
+The copied skills cover CLI usage, one-shot chat, raw inference, and app
+creation. The examples are real bundled apps that show foreground tools,
+background workers, text auth, OAuth, no-auth apps, and local bridge patterns.
 
 ### Disconnect
 
