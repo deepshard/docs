@@ -104,6 +104,57 @@ You should see the Truffile welcome panel listing every command (`scan`, `connec
 Make sure you've onboarded your Truffle with the Symphony desktop client and grabbed your User ID from **Settings → About** before running `truffile connect`.
 </Note>
 
+## Agent setup prompt
+
+If you want Codex, Claude Code, or another coding agent to set up Truffile for you, paste this prompt into the agent from the directory where you want the environment created:
+
+```text
+Set up Truffile for me in this directory.
+
+Use explicit CLI commands and explain what you are doing as you go.
+
+Requirements:
+- Make sure Python 3.12 or newer is available. Prefer `python3.12` when present; otherwise use the newest `python3`/`python` that is >=3.12.
+- Prefer `uv` if it is installed. If `uv` is not installed, use the standard library `venv` module.
+- Create a local virtual environment named `.venv`.
+- Activate/use that virtual environment for all Python and pip commands.
+- Install Truffile with `pip install truffile`.
+- Verify the install with `truffile --help`.
+- Do not require a Truffle device to finish setup. If no device is connected yet, tell me how to run `truffile scan` and `truffile connect <device-name> --user-id <user-id>` when I am ready. My user ID is available in Symphony Settings > About.
+
+After installing, inspect the installed Truffile package and tell me where these bundled resources live locally:
+- bundled skills under `truffile/skills`
+- bundled example apps under `truffile/app-store`
+
+You can locate them with Python like this:
+
+python - <<'PY'
+from importlib import resources
+root = resources.files("truffile")
+print("skills:", root / "skills")
+print("example apps:", root / "app-store")
+PY
+
+If you support skills or instruction files, read the relevant bundled Truffile skills before using the CLI:
+- `truffile-cli` for scan/connect/create/validate/deploy/list/delete/obsidian
+- `truffile-chat` for talking to the on-device agent
+- `truffile-infer` for raw model inference and MCP testing
+- `truffle-app-creator` for creating or porting Truffle apps
+
+When setup is complete, give me a short onboarding that covers:
+- how to connect a Truffle device
+- how to chat with the on-device agent
+- how to use Truffile as an inference endpoint/client
+- how to create, validate, deploy, list, and delete apps
+- where the example apps live inside the installed package
+- links to the docs:
+  - https://docs.truffle.net/sdk/installation
+  - https://docs.truffle.net/sdk/cli
+  - https://docs.truffle.net/sdk/building-apps
+```
+
+The prompt works because Truffile is CLI-first: every core workflow has explicit arguments, and the package ships with both agent-readable skills and example apps.
+
 ## Next steps
 
 <CardGroup cols={2}>

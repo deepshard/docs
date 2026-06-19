@@ -11,6 +11,21 @@ You subclass `BackgroundWorkerApp`, implement a handful of methods, and call `ap
 
 ---
 
+## Background patterns in the examples
+
+The bundled examples use background apps in a few distinct ways:
+
+| Example | Shape | What the background does |
+|---------|-------|--------------------------|
+| `arxiv` | Hybrid | Uses text-configured research interests to find relevant papers and submit recommendation context. |
+| `notion` | Hybrid | Uses remote MCP OAuth state to scan workspace changes and submit digest context. |
+| `viator` | Hybrid | Runs without auth and submits travel/location context around Viator search tools. |
+| `whoop` | Hybrid | Shares OAuth token helpers with the foreground and submits health/recovery summaries. |
+
+The common pattern is: keep API/auth clients in shared modules, keep polling/diffing logic in a plain worker, and keep runtime submission logic in the `BackgroundWorkerApp` subclass.
+
+---
+
 ## The worker + app split
 
 Reference apps consistently keep the *work* (API calls, parsing, diffing) in a plain `Worker` class, and the *SDK wiring* in a small `BackgroundWorkerApp` subclass. This makes the worker easy to unit test without touching the runtime.
@@ -322,7 +337,7 @@ Key points:
 - Always call `await fg.close()` in a `finally` block so the lease is released when the cycle ends.
 
 <Note>
-Because this pattern needs an async function with direct access to `ctx`, it's easiest to write with the lower-level `run_background(fn)` entry point instead of `BackgroundWorkerApp`. The google reference app in `app-store/apps/google` uses exactly this shape.
+Because this pattern needs an async function with direct access to `ctx`, it's easiest to write with the lower-level `run_background(fn)` entry point instead of `BackgroundWorkerApp`.
 </Note>
 
 ### Real example: reuse foreground auth
@@ -596,14 +611,4 @@ Use a background app when you want:
 - **Digest generation** (daily/weekly/hourly summaries)
 - **Context emission** that feeds proactive actions in other apps
 
-If you *also* need callable tools, add a `foreground` section to the same `truffile.yaml` — it becomes a hybrid app. The [GitHub](https://github.com/deepshard/truffile/tree/main/app-store/github) and [Kalshi](https://github.com/deepshard/truffile/tree/main/app-store/kalshi) apps do exactly this.
-
----
-
-## Reference apps
-
-| App | What it shows |
-|-----|--------------|
-| [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) | Full worker + app split. Auth failure dedup, fingerprint-based change detection, hybrid with a foreground MCP proxy. |
-| [`reddit`](https://github.com/deepshard/truffile/tree/main/app-store/reddit) | Background-only, no auth. Pure configuration-driven. |
-| [`kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi) | Hybrid. Portfolio monitoring, price alerts, settlement events — all with rich context formatting. |
+If you *also* need callable tools, add a `foreground` section to the same `truffile.yaml` — it becomes a hybrid app. Use the same shared client/auth module from both entry points, and keep background-specific diffing or polling logic in a plain worker class so it stays easy to test.

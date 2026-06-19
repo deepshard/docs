@@ -13,6 +13,19 @@ If you're new to MCP, start with the [protocol docs](https://modelcontextprotoco
 
 ---
 
+## Foreground patterns in the examples
+
+There are two common ways to build a foreground app:
+
+| Pattern | Use it when | Examples |
+|---------|-------------|----------|
+| Native `ForegroundApp` | You own the tool functions and can shape inputs/outputs directly. | `arxiv`, `exa`, `home-assistant`, `obsidian`, `whoop` |
+| Remote MCP wrapper/proxy | An upstream MCP server already exists, but you need auth, metadata cleanup, argument normalization, safety checks, or compact result formatting. | `notion`, `viator` |
+
+Prefer the native `ForegroundApp` pattern when you are writing the integration yourself. Use the remote MCP wrapper pattern when porting an existing MCP server or when the provider hosts an MCP endpoint.
+
+---
+
 ## Minimal example
 
 A complete, working foreground app that exposes one tool:
@@ -23,8 +36,9 @@ from __future__ import annotations
 
 import atexit
 import httpx
+from mcp.types import CallToolResult, TextContent
 
-from truffile.app_runtime import ForegroundApp, ToolSpec, ok, err
+from truffile.app_runtime import ForegroundApp, ToolSpec, err
 
 
 class MyApp(ForegroundApp):
@@ -42,9 +56,10 @@ class MyApp(ForegroundApp):
                     "Use this when the user asks about current events or recent information."
                 ),
                 icon="magnifying-glass",
+                annotations={"readOnlyHint": True, "destructiveHint": False},
             )
         )
-        async def search_web(query: str, limit: int = 5) -> dict:
+        async def search_web(query: str, limit: int = 5) -> CallToolResult | dict:
             """Search the web for `query` and return up to `limit` results."""
             if not query.strip():
                 return err("query is required")
@@ -55,7 +70,28 @@ class MyApp(ForegroundApp):
                     params={"q": query, "n": limit},
                 )
                 response.raise_for_status()
-                return ok(f"Found {limit} results", results=response.json())
+                results = response.json().get("results", [])[:limit]
+                lines = [f"### Search results for `{query}`"]
+                for i, item in enumerate(results, 1):
+                    title = item.get("title", "Untitled")
+                    url = item.get("url", "")
+                    snippet = item.get("snippet", "")
+                    lines.append(f"- [{i}] {title} — {url}")
+                    if snippet:
+                        lines.append(f"  {snippet[:240]}")
+                return CallToolResult(
+                    content=[TextContent(type="text", text="\n".join(lines))],
+                    structuredContent={
+                        "query": query,
+                        "results": [
+                            {
+                                "title": item.get("title", ""),
+                                "url": item.get("url", ""),
+                            }
+                            for item in results
+                        ],
+                    },
+                )
             except httpx.HTTPStatusError as exc:
                 return err(f"HTTP {exc.response.status_code}", status_code=exc.response.status_code)
 
@@ -115,7 +151,7 @@ from truffile.app_runtime import ToolSpec
             "Returns stars, default branch, and description."
         ),
         icon="github-logo",
-        readonly=True,
+        annotations={"readOnlyHint": True, "destructiveHint": False},
     )
 )
 async def get_repo(owner: str, repo: str) -> dict:
@@ -129,7 +165,9 @@ async def get_repo(owner: str, repo: str) -> dict:
 | `name` | The tool name the model sees. Use `snake_case`. |
 | `description` | Plain English. The model uses this to decide when to call the tool — make it explicit. |
 | `icon` | Either a full URL or a [Phosphor icon name](https://phosphoricons.com/) (e.g. `"search"`, `"github-logo"`). |
-| `readonly` | Set `True` for tools that only read data. Optional. |
+| `title` | Optional human-readable label. Defaults to `name`. |
+| `annotations` | Optional MCP annotations. Use `{"readOnlyHint": True}` for read-only tools and `{"destructiveHint": True}` for tools that delete, send, purchase, publish, or otherwise mutate important state. |
+| `structured_output` | Optional FastMCP structured-output flag. Most apps can leave this unset. |
 
 ### Icons
 
@@ -152,21 +190,75 @@ Supported types: `str`, `int`, `float`, `bool`, `list[...]`, `dict[...]`, `Optio
 
 ---
 
-## Returning results: `ok` / `err`
+## Wrapping a remote MCP server
 
-Every tool should return a dict. Use the `ok()` and `err()` helpers so your responses have a consistent shape:
+Some apps are mostly adapters around another MCP server. The wrapper still matters because it is where you make the provider useful and safe for the Truffle agent:
+
+- add or override tool titles, descriptions, icons, and annotations
+- normalize provider-specific argument names into model-friendly arguments
+- strip debug-only fields from tool results
+- convert verbose provider JSON into compact markdown plus small `structuredContent`
+- report auth/runtime errors through Truffle's app error path
+
+The `notion` example is a remote MCP proxy with OAuth:
+
+```python
+class NotionForegroundApp:
+    def list_tools(self) -> list[dict[str, Any]]:
+        client = self.get_client()
+        tools = client.list_mcp_tools()
+        return [_enrich_tool_metadata(tool) for tool in tools]
+
+    async def invoke_tool(self, name: str, **arguments: Any) -> Any:
+        try:
+            return self.get_client().call_tool(name, arguments)
+        except Exception as exc:
+            await self._error_reporter.report_foreground_exception(exc, tool_name=name)
+            raise
+```
+
+The `viator` example goes further: it wraps a remote MCP server, overrides the two public tool schemas, adds local arguments like `include_raw`, and formats compact travel-search results before returning them.
+
+Use this pattern when an upstream MCP is already good enough to call, but not good enough to expose raw.
+
+---
+
+## Returning results
+
+For simple action tools, returning a small dict with `ok()` / `err()` is fine:
 
 ```python
 from truffile.app_runtime import ok, err
 
-return ok("Found 3 results", results=[...], count=3)
-# → {"status": "success", "message": "Found 3 results", "results": [...], "count": 3}
+return ok("Created draft", draft_id=draft_id)
 
 return err("Rate limit exceeded", retry_after=60)
-# → {"status": "error", "message": "Rate limit exceeded", "retry_after": 60}
 ```
 
-Any keyword arguments are merged into the dict. The agent reads `message` when narrating what the tool did.
+For read tools that can return many rows, prefer an MCP `CallToolResult` with:
+
+- concise markdown in `content`, optimized for the model to read
+- small `structuredContent`, only for IDs or fields the model may need for follow-up calls
+- no duplicated status/tool-name fields
+- no raw provider payloads unless the user explicitly asks for a detailed/debug view
+
+```python
+from mcp.types import CallToolResult, TextContent
+
+return CallToolResult(
+    content=[TextContent(type="text", text="### Issues\n- [1] #42 Fix deploy cleanup")],
+    structuredContent={
+        "issues": [{"ref": 1, "number": 42, "id": "I_kw..."}],
+    },
+)
+```
+
+Plain dict returns are serialized as JSON for the model. That is convenient,
+but it gets token-expensive when the dict is large. If a tool returns lists,
+messages, search results, documents, or other verbose records, write a compact
+text summary yourself.
+
+For remote MCP wrappers, keep the same rule: forward the provider result only when it is already compact. Otherwise, build the model-facing text yourself and keep `structuredContent` to stable IDs, refs, pagination, or fields required for follow-up calls.
 
 ---
 
@@ -201,7 +293,7 @@ async def list_issues(owner: str, repo: str) -> dict:
 A few things we've learned from building the reference apps:
 
 1. **Validate inputs early.** If the caller passes `limit=99999`, clamp it. If an enum arg is invalid, return `err(...)` with the valid values.
-2. **Return structured data, not prose.** The agent is much better at parsing `ok("Found 3 PRs", prs=[...])` than `ok("I found 3 pull requests: #1, #2, #3")`.
+2. **Optimize result text for the model.** For read tools, concise markdown beats raw provider JSON. Keep structured payloads small and action-oriented.
 3. **Write descriptions the model can route on.** "Search X for Y. Use this when Z." Describe *when* to use the tool, not just *what* it does.
 4. **Keep one concept per tool.** `get_market` and `create_order` are better than a single `market_op` with a `mode` arg.
 5. **Name parameters clearly.** `ticker` not `t`, `include_text` not `text`.
@@ -292,14 +384,3 @@ Build a foreground app when you need:
 - **Action-style behaviors** (post, create, cancel, trigger)
 
 If instead you want something that runs on a schedule and feeds context to the agent *without* the user asking, you want a [background app](/sdk/ambient-app) — or a hybrid app that has both.
-
----
-
-## Reference apps
-
-| App | What it shows |
-|-----|--------------|
-| [`exa`](https://github.com/deepshard/truffile/tree/main/app-store/exa) | Clean minimal foreground app. API key auth via a `text` step. |
-| [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) | Foreground proxy to a remote MCP server. Access token via a `text` step. |
-| [`kalshi`](https://github.com/deepshard/truffile/tree/main/app-store/kalshi) | Multi-tool foreground app with signed request auth. |
-| [`notion`](https://github.com/deepshard/truffile/tree/main/app-store/notion) | Foreground app that manages a child MCP subprocess (`@notionhq/notion-mcp-server`). |

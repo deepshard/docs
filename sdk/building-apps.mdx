@@ -13,26 +13,26 @@ A Truffle app is a containerized Python program that runs on your Truffle and ex
 
 You pick the shape by including a `foreground`, `background`, or both sections in your `truffile.yaml`.
 
-<CardGroup cols={2}>
-  <Card title="GitHub (hybrid)" icon="github" href="https://github.com/deepshard/truffile/tree/main/app-store/github">
-    Foreground proxy to the GitHub MCP plus a background worker that summarizes your activity feed.
-  </Card>
-  <Card title="Exa (foreground only)" icon="magnifying-glass" href="https://github.com/deepshard/truffile/tree/main/app-store/exa">
-    A small, clean foreground app that exposes Exa's web research tools.
-  </Card>
-  <Card title="Reddit (background only)" icon="reddit" href="https://github.com/deepshard/truffile/tree/main/app-store/reddit">
-    Scheduled digest of your subreddit feeds — no auth, pure configuration.
-  </Card>
-  <Card title="Kalshi (hybrid)" icon="chart-line" href="https://github.com/deepshard/truffile/tree/main/app-store/kalshi">
-    Trades prediction markets via foreground tools and watches positions from the background.
-  </Card>
-</CardGroup>
+The supported development loop is intentionally CLI-first: scaffold locally,
+validate locally, dry-run the deploy plan, then deploy to a connected device.
+
+The bundled examples live under `truffile/app-store/` in the `truffile` repo. Treat them as reference implementations:
+
+| Example | Shape | Auth/install pattern | Foreground style |
+|---------|-------|----------------------|------------------|
+| `exa` | Foreground | `text` API key | Native `ForegroundApp` wrapper around a remote JSON-RPC MCP service |
+| `home-assistant` | Foreground | `text` URL + long-lived token | Native `ForegroundApp` with safety wrappers over Home Assistant MCP |
+| `obsidian` | Foreground | `text` bridge URL + token, usually prefilled by `truffile obsidian deploy` | Native `ForegroundApp` talking to a local bridge |
+| `arxiv` | Hybrid | `text` research interests | Native `ForegroundApp` tools plus scheduled recommendations |
+| `whoop` | Hybrid | Standard `oauth` | Native `ForegroundApp` and `BackgroundWorkerApp` sharing OAuth token helpers |
+| `notion` | Hybrid | Remote MCP `oauth` with dynamic client registration | Remote MCP proxy/wrapper plus background digest worker |
+| `viator` | Hybrid | No auth; `welcome` step | Remote MCP proxy/wrapper plus travel context background |
 
 ---
 
 ## The SDK import surface
 
-App code imports everything it needs from **`truffile.app_runtime`**. This is the module that ships with the `truffile` package when you `pip install truffile`, and it's what every app in `app-store/` uses.
+App code imports everything it needs from **`truffile.app_runtime`**. This is the module that ships with the `truffile` package when you `pip install truffile`.
 
 ```python
 from truffile.app_runtime import (
@@ -48,16 +48,14 @@ from truffile.app_runtime import (
 )
 ```
 
-<Note>
-You won't find `truffile/app_runtime/` if you browse the [truffile repo](https://github.com/deepshard/truffile) — it's gitignored. The source ships with the installed package, so once you `pip install truffile` it's importable in your app code. If you want to read the implementation, look in your venv at `.venv/lib/python*/site-packages/truffile/app_runtime/`.
-</Note>
+The source lives in `truffile/app_runtime/` in the repo and ships with the installed package. Once you `pip install truffile`, the same runtime is importable from app code running on your device.
 
 There are two other entry points that import the same names:
 
 - `from truffile.sdk import ...` — a curated re-export module with nice grouping. Use this if you prefer one obvious "public API" import.
 - `from truffile import ForegroundApp, BackgroundWorkerApp, ToolSpec, ok, err, OAuth, AppHarness` — the most common names are also re-exported at the top level.
 
-All three forms resolve to the same objects. Pick whichever reads best for you. The examples in this guide use `truffile.app_runtime` because that's what the reference apps in `app-store/` use.
+All three forms resolve to the same objects. Pick whichever reads best for you. The examples in this guide use `truffile.app_runtime` because it is the clearest app-authoring import surface.
 
 ---
 
@@ -92,7 +90,7 @@ The generated `my_app_foreground.py` and `my_app_background.py` are stubs using 
 
 ## Let an agent build the app for you
 
-If you're working in the truffile repo with a coding agent — **Claude Code**, **Codex**, or any other agent that can read skill files — there's a built-in skill it can follow to build a Truffle app end-to-end: **`truffle-app-creator`** (at `skills/SKILL.md`).
+If you're working in the truffile repo with a coding agent — **Claude Code**, **Codex**, or any other agent that can read skill files — there's a built-in skill it can follow to build a Truffle app end-to-end: **`truffle-app-creator`** (at `truffile/skills/truffle-app-creator/SKILL.md`).
 
 It's the fastest path for things like:
 
@@ -166,19 +164,39 @@ steps:
 
 ### Supported step types
 
-Steps run during installation on the device, in order. The supported types are:
+Steps run during installation on the device, in order. The manifest supports:
 
 | Type | What it does |
 |------|-------------|
 | `bash` | Run a shell command in the app's container (for dependencies, setup) |
 | `files` | Copy files from your repo into the container |
 | `text` | Collect input from the user and expose it as env vars on the process |
+| `oauth` | Run an OAuth install flow and persist token state for the app |
+| `welcome` | Show a simple informational install step |
 
 See the [Install steps reference](/sdk/install-steps) for every option on each type — field shapes, validators, exit code semantics, and multi-field examples.
 
 <Note>
-`oauth` and `vnc` step types are **not supported yet**. `truffile validate` and `truffile deploy` will reject them with an explanation. Collect access tokens via a `text` step with a password field for now — see the [`github`](https://github.com/deepshard/truffile/tree/main/app-store/github) and [`notion`](https://github.com/deepshard/truffile/tree/main/app-store/notion) apps for examples.
+`vnc` / browser setup steps are not supported through `truffile`. `truffile validate` rejects them with an explanation and tells users to install those apps through Symphony Settings.
 </Note>
+
+---
+
+## Auth patterns
+
+Pick the smallest auth surface that matches the upstream service:
+
+| Pattern | Use it when | Step type | Example |
+|---------|-------------|-----------|---------|
+| No auth | The upstream service is public or the app only needs static defaults | `welcome` or no auth step | `viator` |
+| Text/config | The user can paste an API key, token, URL, or local bridge value | `text` | `exa`, `home-assistant`, `obsidian`, `arxiv` |
+| Standard OAuth | The provider has normal auth/token endpoints and fixed client metadata | `oauth` | `whoop` |
+| Remote MCP OAuth | The upstream MCP server owns OAuth metadata or dynamic client registration | `oauth` with resource metadata / DCR fields | `notion` |
+| Local bridge | The app on the device needs to talk back to a process on the user's computer | usually `text`, often prefilled by a helper command | `obsidian` |
+
+For `text` auth, add a validator that calls `python ./foreground.py --verify` or `python ./background.py --verify`. For OAuth, write a tiny auth helper around `OAuth` or `RemoteMcpOAuth`, store the token file path in an env var, and verify it in a follow-up `bash` step.
+
+If an update reaches an auth step that cannot be refreshed non-interactively, fail clearly and tell the user to reauthenticate from Settings.
 
 ---
 
@@ -194,7 +212,7 @@ truffile deploy ./my-app
 - **`deploy --dry-run`** builds the deploy plan without changing anything on the device, so you can see what files will be uploaded, what bash steps will run, and how the process config will look.
 - **`deploy`** opens a build session on the device, uploads files, runs your steps in order, and registers the app.
 
-Add `-i` to `deploy` to open an interactive shell inside the app's container when the build steps finish — useful for installing extra packages or debugging before finalizing.
+Add `--interactive` to `deploy` to open a shell inside the app's container when the build steps finish — useful for installing extra packages or debugging before finalizing.
 
 ---
 
@@ -228,18 +246,3 @@ Leaving outbound connections open at process exit is the most common source of f
     Use `BackgroundWorkerApp` to run on a schedule and submit context to the proactive agent.
   </Card>
 </CardGroup>
-
----
-
-## Contribute to the Truffle App Store
-
-Contributions are welcome.
-
-1. Open a PR adding your app under `app-store/` in the [truffile repo](https://github.com/deepshard/truffile).
-2. Include a short screen recording of your app in action.
-
-Accepted apps ship to the Truffle App Store with your name credited as the author. The Truffle team may ask for small changes around runtime reliability before shipping.
-
-<Frame>
-  <img src="/images/app-store.png" alt="Example app card in Truffle App Store with author attribution" />
-</Frame>

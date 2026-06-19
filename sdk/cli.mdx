@@ -15,6 +15,28 @@ Running `truffile` with no arguments drops you straight into [chat mode](#chat-m
 
 ---
 
+## Scriptable commands
+
+Most workflows can be driven with explicit arguments, which makes them easy to
+test in CI or from another agent:
+
+```bash
+truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
+truffile list devices
+truffile list apps --json
+truffile create my-app --path ./apps
+truffile validate ./apps/my-app
+truffile deploy --dry-run ./apps/my-app
+truffile chat "Summarize my installed apps" --json --quiet --timeout 60
+truffile infer "Say pong" --json --no-stream --quiet
+truffile infer --list-models --json
+```
+
+Interactive commands still exist for normal human use. Prefer the explicit
+forms above when you are writing tests, scripts, or agent tools.
+
+---
+
 ## Connecting to Your Truffle
 
 You need to connect to a device before you can chat, run inference, or manage apps.
@@ -361,7 +383,7 @@ truffile deploy ./my-app
 truffile deploy --dry-run
 
 # interactive mode — opens a terminal inside the app container
-truffile deploy -i
+truffile deploy --interactive
 ```
 
 The deploy process:
@@ -370,8 +392,10 @@ The deploy process:
 3. Uploads files and runs installation steps
 4. Registers the app with the device
 
+`oauth` steps print an authorization URL and ask for the pasted callback URL or code. `welcome` steps print their content and wait for Enter. `vnc` / browser setup steps are rejected by validation and should be installed through Symphony Settings.
+
 <Tip>
-Use `truffile deploy -i` to open a shell inside your app's container. Useful for debugging, installing extra dependencies, or testing your app manually before finalizing.
+Use `truffile deploy --interactive` to open a shell inside your app's container. Useful for debugging, installing extra dependencies, or testing your app manually before finalizing.
 </Tip>
 
 ### List apps and devices
@@ -443,7 +467,7 @@ Both modes let you talk to models on your Truffle, but they serve different purp
 | `truffile validate [path]` | Validate app config and sources |
 | `truffile deploy [path]` | Deploy app to connected device |
 | `truffile deploy --dry-run` | Show deploy plan without changes |
-| `truffile deploy -i` | Deploy with interactive terminal |
+| `truffile deploy --interactive` | Deploy with interactive terminal |
 | `truffile list apps` | List installed apps |
 | `truffile list devices` | List connected devices |
 | `truffile delete [all\|1 2 3]` | Delete apps (interactive, by index, or all) |

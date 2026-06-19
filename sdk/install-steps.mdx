@@ -1,9 +1,9 @@
 ---
 title: Install Steps Reference
-description: "Every option for the bash, files, and text steps in truffile.yaml"
+description: "Every supported install step in truffile.yaml"
 ---
 
-Install steps run on the device, in order, when a user installs your app. They're declared under the top-level `steps:` array in `truffile.yaml`:
+Install steps run on the device, in order, when `truffile deploy` builds your app. They're declared under the top-level `steps:` array in `truffile.yaml`:
 
 ```yaml
 steps:
@@ -24,7 +24,11 @@ steps:
         env: MY_APP_API_KEY
 ```
 
-Only three step types are supported today: **`bash`**, **`files`**, **`text`**. Anything else (`oauth`, `vnc`, `welcome`, etc.) is rejected by `truffile validate` and `truffile deploy`.
+Valid app manifest step types are **`bash`**, **`files`**, **`text`**, **`oauth`**, and **`welcome`**. Browser/VNC steps are rejected by `truffile validate`.
+
+<Note>
+The local CLI builder supports `oauth` with a model-friendly flow: it prints the authorization URL, accepts a pasted callback URL or authorization code, exchanges it for tokens, writes the token file into the app container, and injects the token file env var into later build steps and the final app process. If an update reaches an auth step that cannot complete non-interactively, fail clearly and ask the user to reauthenticate from Settings.
+</Note>
 
 ---
 
@@ -34,9 +38,21 @@ Steps execute top-to-bottom. The three practical rules:
 
 1. **Install dependencies before anything that needs them.** Put your `bash` step that runs `pip install` early.
 2. **Copy files before running them.** Any `bash` step or `text` validator that invokes a Python file needs a preceding `files` step that uploads it.
-3. **Collect credentials (text) after files are in place.** `text` validators typically call one of your own Python scripts, so those scripts must already be on disk.
+3. **Collect credentials after files are in place.** `text` validators and OAuth verify steps typically call one of your own Python scripts, so those scripts must already be on disk.
+4. **Verify OAuth after the OAuth step.** Put a `bash` step after `oauth` that calls `python ./foreground.py --verify` and any background verify script.
 
-A safe default order: `bash` (dependencies) → `files` (copy scripts) → `text` (credentials + validator).
+A safe default order: `bash` (dependencies) → `files` (copy scripts) → `text` or `oauth` (credentials) → `bash` (verify/finalize).
+
+### Common step fields
+
+Most examples also use these optional fields:
+
+| Field | Applies to | Description |
+|-------|------------|-------------|
+| `update_policy` | all steps | When the step should run on update. Examples use `run_on_update` for steps that should repeat when the app is updated. |
+| `update_check` | auth/config steps | Command used to decide whether existing auth/config is still valid before asking again. |
+| `ui_state_on_show` | interactive steps | UI state to surface when the step needs user input, often `user_interaction_ready`. |
+| `ui_state_on_complete` | interactive steps | UI state after completion, often `move_to_background`. |
 
 ---
 
@@ -75,7 +91,7 @@ There's no retry. Write commands that are idempotent and handle their own errors
 The base image is Alpine-based (`apk` is the package manager, not `apt`). Python is preinstalled. Commands run with the working directory set to the app's exec directory (usually `/`).
 
 <Tip>
-You can open a shell in the container mid-deploy to experiment with commands before codifying them. Run `truffile deploy -i <path>` — after your steps finish, you get an interactive shell inside the same container. Type `exit` or Ctrl+D to finalize the deploy.
+You can open a shell in the container mid-deploy to experiment with commands before codifying them. Run `truffile deploy --interactive <path>` — after your steps finish, you get an interactive shell inside the same container. Type `exit` or Ctrl+D to finalize the deploy.
 </Tip>
 
 ---
@@ -141,9 +157,9 @@ FileNotFoundError: no such file: /path/to/my-app/missing.py
 
 ## `text`
 
-Prompts the user for one or more values during install, stores them as environment variables on your foreground/background processes, and optionally runs a validator command to verify the inputs immediately.
+Prompts the user for one or more values during deploy, stores them as environment variables on your foreground/background processes, and optionally runs a validator command to verify the inputs immediately.
 
-This is the **only** supported way to collect credentials right now. OAuth and VNC flows are not supported yet.
+Use `text` for API keys, access tokens, and other credentials the user can paste directly. Use `oauth` when the provider needs a browser authorization flow.
 
 ```yaml
 - name: Configure GitHub access token
@@ -316,11 +332,119 @@ if not api_key:
 
 ---
 
+## `oauth`
+
+Runs an OAuth authorization flow during install and writes the resulting token payload to a file in the app container. Use it when the provider requires browser authorization instead of a pasted API key.
+
+There are two real patterns in the bundled examples:
+
+- **Standard OAuth**: fixed authorization/token endpoints and client metadata, like `whoop`.
+- **Remote MCP OAuth**: an MCP server exposes protected-resource metadata or uses dynamic client registration, like `notion`.
+
+### Standard OAuth example
+
+```yaml
+- name: WHOOP OAuth Sign-In
+  type: oauth
+  update_policy: run_on_update
+  update_check: python ./foreground.py --verify
+  provider: Whoop
+  description: Sign in to WHOOP to connect profile, recovery, sleep, and workout data.
+  client_id: your-client-id
+  client_secret_env: null
+  redirect_uri: https://truffle.net/api/oauth/callback
+  auth_endpoint: https://api.example.com/oauth/authorize
+  token_endpoint: https://api.example.com/oauth/token
+  scopes:
+    - offline
+    - read:profile
+  token_output_file: /root/.my-app/oauth.json
+  token_file_env_name: MY_APP_TOKEN_FILE
+  app_var_key: oauth_state
+```
+
+### Remote MCP OAuth example
+
+```yaml
+- name: Notion OAuth Sign-In
+  type: oauth
+  update_policy: run_on_update
+  update_check: python ./notion_foreground.py --verify
+  provider: Notion
+  description: Sign in to Notion to connect your workspace through Notion MCP.
+  redirect_uri: https://truffle.net/api/oauth/callback
+  scopes: []
+  dynamic_client_registration: true
+  resource_metadata_endpoint: https://mcp.notion.com/.well-known/oauth-protected-resource
+  oauth_resource: https://mcp.notion.com
+  client_name: Truffle
+  auth_endpoint: https://mcp.notion.com/authorize
+  token_endpoint: https://mcp.notion.com/token
+  client_id_env: NOTION_CLIENT_ID
+  client_secret_env: null
+  token_output_file: /root/.notion-oauth/tokens.json
+  token_file_env_name: NOTION_OAUTH_TOKEN_FILE
+  app_var_key: notion_oauth_state
+```
+
+### OAuth fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `provider` | yes | Human-readable provider name shown during auth. |
+| `description` | no | Short explanation shown to the user. |
+| `redirect_uri` | yes | Callback URL registered with the provider. |
+| `auth_endpoint` | yes | Provider authorization endpoint. |
+| `token_endpoint` | yes | Provider token endpoint. |
+| `scopes` | no | List of OAuth scopes. Use `[]` when the remote MCP server handles its own scope defaults. |
+| `client_id` | usually | Static OAuth client ID. |
+| `client_id_env` | alternative | Env var where a dynamically registered client ID is written/read. |
+| `client_secret` | optional | Static client secret when the app owns one. |
+| `client_secret_env` | optional | Env var for the client secret. Use `null` for public/DCR clients with no secret. |
+| `dynamic_client_registration` | no | Set `true` for remote MCP OAuth providers that support DCR. |
+| `resource_metadata_endpoint` | remote MCP | OAuth protected-resource metadata URL. |
+| `oauth_resource` | remote MCP | Resource audience for the remote MCP server. |
+| `client_name` | remote MCP | Client display name used during DCR. |
+| `token_output_file` | yes | Path where the installer writes token JSON in the app container. |
+| `token_file_env_name` | yes | Env var exposed to the app process with the token file path. |
+| `app_var_key` | yes | App-scoped key used to persist OAuth state. |
+| `update_check` | no | Verify command to avoid unnecessary reauth when tokens still work. |
+
+### App-side OAuth helper
+
+In Python, subclass `OAuth` for normal providers or `RemoteMcpOAuth` for remote MCP providers. The token helper should load from the env var named by `token_file_env_name`, expose `get_oauth_payload()`, and provide a `--verify` path that exits non-zero when the token is missing or expired.
+
+The `whoop` example uses `WhoopOAuth(OAuth)` and stores tokens at `WHOOP_TOKEN_STORE_PATH`. The `notion` example uses `NotionAuth(RemoteMcpOAuth)` and stores tokens at `NOTION_OAUTH_TOKEN_FILE`.
+
+For public/dynamically registered remote MCP clients, the CLI uses PKCE automatically when no client secret is available. Token JSON also includes refresh metadata such as `client_id`, `client_secret` when present, `redirect_uri`, `token_endpoint`, and `resource`, so app-side helpers can refresh later without needing separate env vars.
+
+---
+
+## `welcome`
+
+Shows informational install content and requires no credentials. Use it when the app is ready to run after files are copied and optional verification has passed.
+
+```yaml
+- name: Connect Viator
+  type: welcome
+  update_policy: run_on_update
+  ui_state_on_complete: move_to_background
+  content: |
+    Viator adds travel experience search and detail lookup tools.
+
+    No sign-in is required. Continue to finish installing the app.
+```
+
+The `viator` example uses this pattern after a `bash` verify step because its upstream MCP server does not require user auth.
+
+---
+
 ## Validating before you deploy
 
 `truffile validate` catches most step-level problems before you ever hit the device:
 
-- Unknown step types (`oauth`, `vnc`, etc.) are rejected with a clear message.
+- Unknown step types are rejected with a clear message that lists the supported manifest types.
+- `vnc` / browser setup steps are rejected with a clear message telling the user to install through Symphony Settings.
 - Missing required fields (`type`, `run` on bash, `files` on files) produce errors.
 - Missing `source` files in `files` steps are caught.
 - Python syntax errors in any uploaded `.py` file are caught.
