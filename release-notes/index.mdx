@@ -7,9 +7,133 @@ mode: "wide"
 <div className="xl:w-[calc(100%+10rem)] xl:max-w-none 2xl:w-[calc(100%+14rem)]">
   <AccordionGroup>
     <Accordion
-      title="May 11, 2026"
+      title="June 26, 2026"
       description="Latest release"
       defaultOpen
+    >
+      <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="grid gap-4 border-b border-zinc-200 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8 dark:border-zinc-800">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Apps and SDK
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              Three new apps are available this week.
+            </h3>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+              <div className="flex gap-4 border-b border-zinc-200 p-4 dark:border-zinc-800">
+                <img
+                  src="/images/apps/Daily_News.png"
+                  alt="Daily News app icon."
+                  className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800"
+                />
+                <div>
+                  <h4 className="m-0 text-lg font-medium text-zinc-950 dark:text-zinc-50">
+                    Daily News
+                  </h4>
+                  <p className="mt-2 mb-0 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    Get daily news every day at 9am. Ask your Truffle to use the app and set your interests first so you get curated news.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 border-b border-zinc-200 p-4 dark:border-zinc-800">
+                <img
+                  src="/images/apps/X.png"
+                  alt="X app icon."
+                  className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800"
+                />
+                <div>
+                  <h4 className="m-0 text-lg font-medium text-zinc-950 dark:text-zinc-50">
+                    X
+                  </h4>
+                  <p className="mt-2 mb-0 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    Have your Truffle browse X for you and surface posts that you would find interesting.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 p-4">
+                <img
+                  src="/images/apps/Firecrawl.png"
+                  alt="Firecrawl app icon."
+                  className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800"
+                />
+                <div>
+                  <h4 className="m-0 text-lg font-medium text-zinc-950 dark:text-zinc-50">
+                    Firecrawl
+                  </h4>
+                  <p className="mt-2 mb-0 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    Use Firecrawl with your Truffle for cleaner web extraction and app workflows.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-5 mb-0 text-base leading-7 text-zinc-700 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              You can now reset Convo and clear stale users with Truffile:
+            </p>
+
+            ```bash
+            # soft reset: restart Convo while keeping history
+            truffile convo reset
+
+            # hard reset: clear persisted Convo state
+            truffile convo reset --hard
+
+            # delete old users and keep your current primary account
+            truffile users clear-other
+            ```
+          </div>
+        </div>
+
+        <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Truffle
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              Control your LEDs with your Truffle.
+            </h3>
+            <p className="mt-4 mb-0 text-base leading-7 text-zinc-700 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              Prompts to try:
+            </p>
+
+            ```text
+            hey Truffle can you set a scheduled task to keep your LEDs dimmed every night from 8 pm to 6 am!
+            ```
+
+            ```text
+            read the LED skill then overhaul every single action + state, remember that you're the representation of convo. I would like you to change the whole LED theme to follow a Tron-like vibe!
+            ```
+
+            <h3 className="mt-8 m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              RunToolScript
+            </h3>
+            <p className="mt-4 mb-0 text-base leading-7 text-zinc-700 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              Your Truffle can write its own tools and save them for doing your favorite workflows.
+            </p>
+
+            ```text
+            Build me a tool that shows today's FIFA World Cup 2026 match schedule — the teams playing, times, and stadiums. Use WebSearch or any reliable web source to fetch the data.
+            ```
+
+            ```text
+            hey Truffle make a tool where every time there's a GitHub PR assigned to me I want you to message me in my personal DM on Slack
+            ```
+
+            ```text
+            make a tool that goes through my weekly emails and puts all marketing and spam emails that are not important to me in a separate folder that I can manually delete later. Don't delete them, just sort them for me to review.
+            ```
+          </div>
+        </div>
+      </div>
+    </Accordion>
+
+    <Accordion
+      title="May 11, 2026"
+      description="Previous release"
     >
       <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid gap-4 border-b border-zinc-200 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8 dark:border-zinc-800">
