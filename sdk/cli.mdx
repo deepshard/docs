@@ -72,12 +72,12 @@ If you already know your device name:
 truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
 ```
 
-If you omit `--user-id`, you'll be prompted for your **User ID** (found in **Settings > About** in the Symphony desktop client), then asked to approve the connection on your device.
+If you omit `--user-id`, you'll be prompted for your **User ID** (found in **Symphony > Settings**), then asked to approve the connection on your device.
 
 Credentials are saved locally — subsequent connections are automatic.
 
 <Note>
-Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview), finish device onboarding there, copy your User ID from **Settings > About**, then approve the session on your Truffle when the CLI asks.
+Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview), finish device onboarding there, copy your User ID from **Symphony > Settings**, then approve the session on your Truffle when the CLI asks.
 </Note>
 
 ---
@@ -181,34 +181,31 @@ Type `/help` inside chat to see all commands.
 | `/title` | Show the current task's title |
 | `/rename <name>` | Rename the current task |
 
-#### App integration
+#### App discovery
 
-Installed apps are registered as slash commands. Run `/apps` to see them:
+Run `/apps` to see installed apps on the connected device:
 
 ```
 you> /apps
 
 installed apps:
-  /kalshi     Kalshi (org.deepshard.kalshi)
-  /slack      Slack (org.deepshard.slack)
-  /github     GitHub (org.deepshard.github)
+  • Kalshi (org.deepshard.kalshi)
+  • Slack (org.deepshard.slack)
+  • GitHub (org.deepshard.github)
 ```
 
-Type `/<appname>` to add that app's tools to your current task:
+Apps are no longer registered as chat slash commands. The agent discovers
+installed app tools through tool search and decides which tools are relevant
+for the task.
 
-```
-you> /kalshi
-✓ added Kalshi to task
-
-you> What are the top prediction markets right now?
-```
+For scripted one-shot calls where you explicitly want to constrain the task to
+an app, use `truffile chat --app <name-or-uuid> "..."`.
 
 #### App & task management
 
 | Command | What it does |
 |---------|-------------|
-| `/apps` | List installed apps with their slash shortcuts |
-| `/<appname>` | Add an app to the current task |
+| `/apps` | List installed apps |
 | `/deploy <path>` | Deploy an app to the device from within chat |
 | `/delete app [name]` | Delete an installed app (interactive picker if no name given) |
 | `/delete task` | Delete a task (interactive picker) |
@@ -485,7 +482,7 @@ Both modes let you talk to models on your Truffle, but they serve different purp
 | **What it is** | Agent with tasks, apps, and tool use | Direct model inference REPL |
 | **Command** | `truffile chat` (or just `truffile`) | `truffile infer` |
 | **Conversations** | Persistent tasks you can resume | In-memory history, cleared on exit |
-| **Apps** | Installed apps available as `/<appname>` | No app integration |
+| **Apps** | Agent can discover installed app tools with tool search | No app integration |
 | **MCP** | No MCP (apps provide tools) | Full MCP support via `/mcp connect` |
 | **Image input** | Not available | `/attach <path-or-url>` |
 | **Generation control** | Managed by the agent | Full control (`/reasoning`, `/stream`, `/temperature`, etc.) |

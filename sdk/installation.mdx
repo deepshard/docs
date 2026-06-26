@@ -26,7 +26,7 @@ Requirements:
 - Install Truffile with `pip install truffile`; if it is already installed, make sure it is upgraded to the latest version.
 - Verify the install with `truffile --help`.
 - Run `truffile load all` so the bundled skills and example apps are copied into this workspace under `./truffile/skills` and `./truffile/examples`.
-- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then get my User ID from Symphony Settings > About, then run `truffile scan` and `truffile connect <device-name> --user-id <user-id>`. During `truffile connect`, I must approve the new session on my Truffle device.
+- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then get my User ID from Symphony > Settings, then run `truffile scan` and `truffile connect <device-name> --user-id <user-id>`. During `truffile connect`, I must approve the new session on my Truffle device.
 
 After `truffile load all`, inspect the local resources before giving me the onboarding:
 - Read `./truffile/skills/truffile-cli/SKILL.md` for scan/connect/create/validate/deploy/list/delete/obsidian.
@@ -37,7 +37,7 @@ After `truffile load all`, inspect the local resources before giving me the onbo
 - Run `truffile --help`, `truffile deploy --help`, `truffile chat --help`, and `truffile infer --help` so you know the CLI surface.
 
 When setup is complete, give me a short onboarding that covers:
-- that connecting requires a Symphony-onboarded Truffle, the User ID from Symphony Settings > About, and device approval during `truffile connect`
+- that connecting requires a Symphony-onboarded Truffle, the User ID from Symphony > Settings, and device approval during `truffile connect`
 - how to connect a Truffle device
 - how to chat with the on-device agent
 - how to use Truffile as an inference endpoint/client
@@ -145,7 +145,7 @@ truffile help
 You should see the Truffile welcome panel listing every command (`scan`, `connect`, `deploy`, `chat`, `infer`, and the rest). If you see the panel, you're ready to go.
 
 <Note>
-Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Settings → About**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.
+Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Symphony → Settings**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.
 </Note>
 
 ## Next steps
