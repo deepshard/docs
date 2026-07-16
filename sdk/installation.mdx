@@ -6,8 +6,8 @@ description: "Install the Truffile SDK to chat with and deploy apps to your Truf
 ## Prerequisites
 
 - Python 3.12 or higher
-- A Truffle¹ device
-- The [Symphony desktop client](/client/overview), with your device already onboarded
+- A Truffle¹ device when you are ready to connect, chat, run inference, or deploy
+- The [Symphony desktop client](/client/overview), with your device onboarded before connecting
 
 ## Agent setup prompt
 
@@ -20,11 +20,10 @@ Use explicit CLI commands and explain what you are doing as you go.
 
 Requirements:
 - Make sure Python 3.12 or newer is available. Prefer `python3.12` when present; otherwise use the newest `python3`/`python` that is >=3.12.
-- Prefer `uv` if it is installed. If `uv` is not installed, use the standard library `venv` module.
-- Create a local virtual environment named `.venv`.
-- Activate/use that virtual environment for all Python and pip commands.
-- Install Truffile with `pip install truffile`; if it is already installed, make sure it is upgraded to the latest version.
-- Verify the install with `truffile --help`.
+- If `uv` is installed, create `.venv` with `uv venv --python 3.12 .venv` and install with `uv pip install --python .venv/bin/python --upgrade truffile`.
+- Otherwise create `.venv` with the standard library and install with `.venv/bin/python -m pip install --upgrade pip truffile`.
+- Use `.venv/bin/python` and `.venv/bin/truffile` for all Python and Truffile commands.
+- Verify the install with `.venv/bin/truffile --help`.
 - Run `truffile load all` so the bundled skills and example apps are copied into this workspace under `./truffile/skills` and `./truffile/examples`.
 - Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then get my User ID from Symphony > Settings, then run `truffile scan` and `truffile connect <device-name> --user-id <user-id>`. During `truffile connect`, I must approve the new session on my Truffle device.
 
@@ -63,7 +62,7 @@ The prompt works because Truffile is CLI-first: every core workflow has explicit
 
     Verify:
     ```bash
-    python3 --version
+    python3.12 --version
     ```
   </Tab>
   <Tab title="Windows">
@@ -86,63 +85,70 @@ The prompt works because Truffile is CLI-first: every core workflow has explicit
 
     Verify:
     ```bash
-    python3 --version
+    python3.12 --version
     ```
   </Tab>
 </Tabs>
 
-## Set up a virtual environment
+## Create the virtual environment and install Truffile
+
+Use uv when it is available. Both paths below call the environment directly, so
+they do not depend on shell activation.
 
 <Tabs>
-  <Tab title="venv">
+  <Tab title="uv">
+    macOS / Linux:
+
     ```bash
-    python3 -m venv .venv
+    uv venv --python 3.12 .venv
+    uv pip install --python .venv/bin/python --upgrade truffile
     ```
 
-    <Tabs>
-      <Tab title="macOS / Linux">
-        ```bash
-        source .venv/bin/activate
-        ```
-      </Tab>
-      <Tab title="Windows">
-        ```powershell
-        .venv\Scripts\Activate.ps1
-        ```
-      </Tab>
-    </Tabs>
+    Windows PowerShell:
+
+    ```powershell
+    uv venv --python 3.12 .venv
+    uv pip install --python .venv\Scripts\python.exe --upgrade truffile
+    ```
   </Tab>
-  <Tab title="uv">
-    If you prefer [uv](https://github.com/astral-sh/uv) for faster package management:
+  <Tab title="venv">
+    macOS / Linux:
 
     ```bash
-    # install uv if you don't have it
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    python3.12 -m venv .venv
+    .venv/bin/python -m pip install --upgrade pip truffile
+    ```
 
-    # create and activate a venv
-    uv venv
-    source .venv/bin/activate   # macOS / Linux
-    # or
-    .venv\Scripts\Activate.ps1  # Windows
+    Windows PowerShell:
+
+    ```powershell
+    py -3.12 -m venv .venv
+    .venv\Scripts\python.exe -m pip install --upgrade pip truffile
     ```
   </Tab>
 </Tabs>
 
-## Install Truffile
+## Verify the installation
 
-With your environment activated:
-
-```bash
-pip install truffile
-```
-
-Verify the installation:
+macOS / Linux:
 
 ```bash
-truffile help
+.venv/bin/truffile --version
+.venv/bin/truffile help
+.venv/bin/truffile load all --json
+.venv/bin/truffile doctor --json
 ```
 
-You should see the Truffile welcome panel listing every command (`scan`, `connect`, `deploy`, `chat`, `infer`, and the rest). If you see the panel, you're ready to go.
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\truffile.exe --version
+.venv\Scripts\truffile.exe help
+.venv\Scripts\truffile.exe load all --json
+.venv\Scripts\truffile.exe doctor --json
+```
+
+`truffile doctor --json` may report `device_required` after a successful local installation. That means the CLI is ready, but a Truffle has not been paired in this environment yet.
 
 <Note>
 Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Symphony → Settings**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.

@@ -11,10 +11,27 @@ For the interactive CLI experience (`truffile infer`), see the [CLI guide](/sdk/
 
 ---
 
+## Find the device host
+
+Your computer must be able to reach the Truffle on the same network. Run:
+
+```bash
+truffile scan --json --non-interactive
+```
+
+Use an address returned in `devices[].addresses`, or use the device name as an
+mDNS host such as `truffle-1234.local`.
+
+```bash
+export TRUFFLE_HOST=truffle-1234.local
+```
+
+---
+
 ## List Models
 
 ```bash
-curl -sS http://<device-host>/if2/v1/models | python -m json.tool
+curl -sS "http://$TRUFFLE_HOST/if2/v1/models" | python -m json.tool
 ```
 
 Or via the CLI:
@@ -28,7 +45,7 @@ truffile models
 ## Chat Completions
 
 ```bash
-curl -sS http://<device-host>/if2/v1/chat/completions \
+curl -sS "http://$TRUFFLE_HOST/if2/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "<model-id-or-uuid>",
@@ -36,6 +53,38 @@ curl -sS http://<device-host>/if2/v1/chat/completions \
       {"role": "user", "content": "Give me one sentence about Truffle."}
     ]
   }'
+```
+
+### Python client
+
+`httpx` is installed with Truffile. This example lists the available models,
+uses the first returned model ID, and sends one non-streaming request:
+
+```python
+import os
+
+import httpx
+
+base_url = f"http://{os.environ['TRUFFLE_HOST']}/if2/v1"
+
+models_response = httpx.get(f"{base_url}/models", timeout=15)
+models_response.raise_for_status()
+models = models_response.json()["data"]
+if not models:
+    raise RuntimeError("No inference models are available on this Truffle")
+
+model = models[0].get("id") or models[0]["uuid"]
+response = httpx.post(
+    f"{base_url}/chat/completions",
+    json={
+        "model": model,
+        "messages": [{"role": "user", "content": "Reply with pong."}],
+        "stream": False,
+    },
+    timeout=120,
+)
+response.raise_for_status()
+print(response.json()["choices"][0]["message"]["content"])
 ```
 
 ### Request body
