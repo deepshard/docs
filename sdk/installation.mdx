@@ -6,52 +6,24 @@ description: "Install the Truffile SDK to chat with and deploy apps to your Truf
 ## Prerequisites
 
 - Python 3.12 or higher
-- A Truffle¹ device
-- The [Symphony desktop client](/client/overview), with your device already onboarded
+- A Truffle¹ device when you are ready to connect, chat, run inference, or deploy
+- The [Symphony desktop client](/client/overview), with your device onboarded before connecting
 
 ## Agent setup prompt
 
-If you want Codex, Claude Code, or another coding agent to set up Truffile for you, paste this prompt into the agent from the directory where you want the environment created:
+If you want Codex, Claude Code, or another coding agent to set up Truffile for you, replace `<what you want to do with your Truffle>` with your task, then paste this prompt from that workspace:
 
 ```text
-Set up Truffile for me in this directory.
+Set up the latest Truffile in this workspace, then <what you want to do with your Truffle>.
 
-Use explicit CLI commands and explain what you are doing as you go.
-
-Requirements:
-- Make sure Python 3.12 or newer is available. Prefer `python3.12` when present; otherwise use the newest `python3`/`python` that is >=3.12.
-- Prefer `uv` if it is installed. If `uv` is not installed, use the standard library `venv` module.
-- Create a local virtual environment named `.venv`.
-- Activate/use that virtual environment for all Python and pip commands.
-- Install Truffile with `pip install truffile`; if it is already installed, make sure it is upgraded to the latest version.
-- Verify the install with `truffile --help`.
-- Run `truffile load all` so the bundled skills and example apps are copied into this workspace under `./truffile/skills` and `./truffile/examples`.
-- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then get my User ID from Symphony > Settings, then run `truffile scan` and `truffile connect <device-name> --user-id <user-id>`. During `truffile connect`, I must approve the new session on my Truffle device.
-
-After `truffile load all`, inspect the local resources before giving me the onboarding:
-- Read `./truffile/skills/truffile-cli/SKILL.md` for scan/connect/create/validate/deploy/list/delete/obsidian.
-- Read `./truffile/skills/truffile-chat/SKILL.md` for talking to the on-device agent.
-- Read `./truffile/skills/truffile-infer/SKILL.md` for raw model inference and MCP testing.
-- Read `./truffile/skills/truffle-app-creator/SKILL.md` for creating or porting Truffle apps.
-- Skim the example app manifests under `./truffile/examples/*/truffile.yaml` so you know the foreground, background, auth, and install-step patterns available.
-- Run `truffile --help`, `truffile deploy --help`, `truffile chat --help`, and `truffile infer --help` so you know the CLI surface.
-
-When setup is complete, give me a short onboarding that covers:
-- that connecting requires a Symphony-onboarded Truffle, the User ID from Symphony > Settings, and device approval during `truffile connect`
-- how to connect a Truffle device
-- how to chat with the on-device agent
-- how to use Truffile as an inference endpoint/client
-- how to create, validate, deploy, list, and delete apps
-- where the copied skills and example apps live in this workspace
-- links to the docs:
-  - https://docs.truffle.net/client/overview
-  - https://docs.truffle.net/sdk/installation
-  - https://docs.truffle.net/sdk/cli
-  - https://docs.truffle.net/sdk/building-apps
-- End by asking whether I want to start by making a Truffle app.
+Follow https://docs.truffle.net/sdk/installation. Run `truffile load all --json` and
+`truffile doctor --json`, then follow only the copied skills relevant to the task.
+Continue through all work that does not need me. Ask only for Symphony onboarding
+or my User ID, approval on the physical Truffle, credentials, or confirmation
+before deployment or a destructive action.
 ```
 
-The prompt works because Truffile is CLI-first: every core workflow has explicit arguments, and `truffile load all` gives the agent local skills and example apps to read before it starts building.
+The prompt starts with your goal because installing Truffile is only a prerequisite. `truffile load all --json` gives the agent the current local skills and examples, while `truffile doctor --json` tells it exactly which part of the local-to-device path is ready.
 
 ## Install Python
 
@@ -63,7 +35,7 @@ The prompt works because Truffile is CLI-first: every core workflow has explicit
 
     Verify:
     ```bash
-    python3 --version
+    python3.12 --version
     ```
   </Tab>
   <Tab title="Windows">
@@ -86,63 +58,70 @@ The prompt works because Truffile is CLI-first: every core workflow has explicit
 
     Verify:
     ```bash
-    python3 --version
+    python3.12 --version
     ```
   </Tab>
 </Tabs>
 
-## Set up a virtual environment
+## Create the virtual environment and install Truffile
+
+Use uv when it is available. Both paths below call the environment directly, so
+they do not depend on shell activation.
 
 <Tabs>
-  <Tab title="venv">
+  <Tab title="uv">
+    macOS / Linux:
+
     ```bash
-    python3 -m venv .venv
+    uv venv --python 3.12 .venv
+    uv pip install --python .venv/bin/python --upgrade truffile
     ```
 
-    <Tabs>
-      <Tab title="macOS / Linux">
-        ```bash
-        source .venv/bin/activate
-        ```
-      </Tab>
-      <Tab title="Windows">
-        ```powershell
-        .venv\Scripts\Activate.ps1
-        ```
-      </Tab>
-    </Tabs>
+    Windows PowerShell:
+
+    ```powershell
+    uv venv --python 3.12 .venv
+    uv pip install --python .venv\Scripts\python.exe --upgrade truffile
+    ```
   </Tab>
-  <Tab title="uv">
-    If you prefer [uv](https://github.com/astral-sh/uv) for faster package management:
+  <Tab title="venv">
+    macOS / Linux:
 
     ```bash
-    # install uv if you don't have it
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    python3.12 -m venv .venv
+    .venv/bin/python -m pip install --upgrade pip truffile
+    ```
 
-    # create and activate a venv
-    uv venv
-    source .venv/bin/activate   # macOS / Linux
-    # or
-    .venv\Scripts\Activate.ps1  # Windows
+    Windows PowerShell:
+
+    ```powershell
+    py -3.12 -m venv .venv
+    .venv\Scripts\python.exe -m pip install --upgrade pip truffile
     ```
   </Tab>
 </Tabs>
 
-## Install Truffile
+## Verify the installation
 
-With your environment activated:
-
-```bash
-pip install truffile
-```
-
-Verify the installation:
+macOS / Linux:
 
 ```bash
-truffile help
+.venv/bin/truffile --version
+.venv/bin/truffile help
+.venv/bin/truffile load all --json
+.venv/bin/truffile doctor --json
 ```
 
-You should see the Truffile welcome panel listing every command (`scan`, `connect`, `deploy`, `chat`, `infer`, and the rest). If you see the panel, you're ready to go.
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\truffile.exe --version
+.venv\Scripts\truffile.exe help
+.venv\Scripts\truffile.exe load all --json
+.venv\Scripts\truffile.exe doctor --json
+```
+
+`truffile doctor --json` may report `device_required` after a successful local installation. That means the CLI is ready, but a Truffle has not been paired in this environment yet.
 
 <Note>
 Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Symphony → Settings**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.

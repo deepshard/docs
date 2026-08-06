@@ -48,7 +48,9 @@ from truffile.app_runtime import (
 )
 ```
 
-The source lives in `truffile/app_runtime/` in the repo and ships with the installed package. Once you `pip install truffile`, the same runtime is importable from app code running on your device.
+The runtime ships in the installed package. Truffile release builds stage it
+from Truffle's runtime source before packaging, so released wheels contain the
+complete app-authoring API used by generated apps.
 
 There are two other entry points that import the same names:
 
@@ -64,7 +66,7 @@ All three forms resolve to the same objects. Pick whichever reads best for you. 
 The fastest way to start:
 
 ```bash
-truffile create my-app
+truffile create my-app --type foreground
 ```
 
 ```text
@@ -72,7 +74,6 @@ truffile create my-app
   Files:
   → truffile.yaml
   → my_app_foreground.py
-  → my_app_background.py
   → icon.png
 
   Next: truffile validate ./my-app
@@ -82,9 +83,11 @@ Flags:
 
 - `truffile create <name>` — set the name, prompt for base path
 - `truffile create <name> --path <dir>` — set name and base path
+- `truffile create <name> --type foreground|background|hybrid` — choose the app shape
 - `truffile create` — fully interactive
 
-The generated `my_app_foreground.py` and `my_app_background.py` are stubs using the real SDK classes. Delete whichever you don't need — the app type is inferred from which `foreground` / `background` sections you keep in `truffile.yaml`.
+The default remains `hybrid`. When you pass `--type`, Truffile writes only the
+matching entrypoints, manifest sections, and copy-file steps.
 
 ---
 

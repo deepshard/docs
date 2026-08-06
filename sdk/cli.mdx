@@ -21,15 +21,18 @@ Most workflows can be driven with explicit arguments, which makes them easy to
 test in CI or from another agent:
 
 ```bash
-truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
-truffile list devices
+truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID" --json --non-interactive
+truffile list devices --json
 truffile list apps --json
-truffile load all
-truffile create my-app --path ./apps
-truffile validate ./apps/my-app
-truffile deploy ./apps/my-app --dry-run --json
+truffile load all --json
+truffile create my-app --type foreground --path ./apps --json --non-interactive
+truffile validate ./apps/my-app --json
+truffile deploy ./apps/my-app --dry-run --json --non-interactive
+# after the user approves deployment and replacing an installed copy
 truffile deploy ./apps/my-app --json --non-interactive --replace
-truffile delete my-app
+truffile delete my-app --dry-run --json --non-interactive
+# after the user confirms the exact deletion plan
+truffile delete my-app --yes --json --non-interactive
 truffile chat "Summarize my installed apps" --json --quiet --timeout 60
 truffile infer "Say pong" --json --no-stream --quiet
 truffile infer --list-models --json
@@ -237,7 +240,7 @@ truffile infer
 | `--model <name>` | Pre-select a model |
 | `--system <text>` | Set an initial system prompt |
 | `--no-stream` | Disable streaming (get the full response at once) |
-| `--no-tools` | Disable built-in tools (`web_search`, `web_fetch`) |
+| `--no-default-tools` | Disable built-in tools (`web_search`, `web_fetch`) |
 | `--mcp <url>` | Connect an MCP server at startup (can be repeated) |
 
 ```bash
@@ -393,10 +396,12 @@ truffile create
 truffile create my-app
 
 # in a specific directory
-truffile create my-app --path ./apps
+truffile create my-app --type foreground --path ./apps
 ```
 
-Creates a scaffold with `truffile.yaml`, foreground/background entry points, and a default icon.
+Use `--type foreground`, `--type background`, or `--type hybrid`. The default is
+`hybrid` for compatibility. The scaffold contains only the selected entrypoints,
+matching manifest sections, and a default icon.
 
 ### Validate an app
 
@@ -443,25 +448,24 @@ truffile list devices   # devices you have saved credentials for
 
 ### Delete apps
 
+For scripts and agents, identify an app by its stable name, slug, or UUID,
+preview the exact target, ask the user to confirm that plan, and only then pass
+`--yes`:
+
 ```bash
-# interactive picker
-truffile delete
-
-# delete all apps
-truffile delete all
-
-# delete by index (1-based, as shown in the app list)
-truffile delete 1 2 3
-
-# comma-separated works too
-truffile delete 1,3,5
-
-# pipe selection
-echo "all" | truffile delete
-echo "1 2" | truffile delete
+truffile list apps --json
+truffile delete my-app --dry-run --json --non-interactive
+# after the user confirms the exact app shown above
+truffile delete my-app --yes --json --non-interactive
 ```
 
-If you pass indices that are out of range or invalid, the CLI falls back to the interactive picker (when running in a terminal).
+For normal human use, `truffile delete` opens an interactive picker and asks
+for confirmation. Numeric indices and `all` remain available interactively,
+but automated workflows should use a stable name, slug, or UUID because list
+ordering can change.
+
+Non-interactive deletion without a selection or without `--yes` returns a
+structured error and does not mutate the device.
 
 ### List models
 
@@ -499,14 +503,15 @@ Both modes let you talk to models on your Truffle, but they serve different purp
 | `truffile scan` | Scan network for Truffle devices |
 | `truffile connect <device>` | Connect to a device |
 | `truffile disconnect [device\|all]` | Disconnect and clear credentials |
-| `truffile create [name] [--path <dir>]` | Scaffold a new app |
+| `truffile create [name] [--path <dir>] [--type foreground\|background\|hybrid]` | Scaffold a new app |
 | `truffile validate [path]` | Validate app config and sources |
 | `truffile deploy [path]` | Deploy app to connected device |
 | `truffile deploy --dry-run` | Show deploy plan without changes |
 | `truffile deploy --interactive` | Deploy with interactive terminal |
 | `truffile list apps` | List installed apps |
 | `truffile list devices` | List connected devices |
-| `truffile delete [all\|1 2 3]` | Delete apps (interactive, by index, or all) |
+| `truffile delete <name-or-uuid> --dry-run --json --non-interactive` | Preview an exact app deletion plan |
+| `truffile delete <name-or-uuid> --yes --json --non-interactive` | Delete an app after explicit confirmation |
 | `truffile models` | List models on connected device |
 | `truffile chat [--resume]` | Agent chat REPL |
 | `truffile infer [--model M] [--system S]` | Raw inference REPL |
