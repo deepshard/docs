@@ -7,7 +7,7 @@ A Truffle app is a containerized Python program that runs on your Truffle and ex
 
 | Shape | When it runs | What it does |
 |-------|--------------|--------------|
-| **Foreground** | On demand | Exposes MCP tools the agent can call during tasks |
+| **Foreground** | On demand | Exposes MCP tools the agent can call during a Convo request |
 | **Background** | On a schedule | Submits context to the proactive agent |
 | **Hybrid** | On demand + on a schedule | Both: tools *and* scheduled context |
 
@@ -214,6 +214,19 @@ truffile deploy ./my-app
 
 Add `--interactive` to `deploy` to open a shell inside the app's container when the build steps finish — useful for installing extra packages or debugging before finalizing.
 
+After deployment, use an agent-safe one-shot request as a routing smoke test:
+
+```bash
+truffile convo --new --json --quiet --timeout 120 \
+  "Use <tool behavior> and summarize the result"
+```
+
+Inspect `tool_calls` in the JSON result. This tests normal agent discovery and
+tool routing only. Convo has no per-thread app allowlist, so the CLI cannot
+attach the newly deployed app or guarantee that this request uses it. Use
+`truffile infer --mcp <url>` before deployment when you need deterministic
+local selection of the app's MCP server.
+
 ---
 
 ## Runtime stability pattern
@@ -240,7 +253,7 @@ Leaving outbound connections open at process exit is the most common source of f
 
 <CardGroup cols={2}>
   <Card title="Build a Foreground App" icon="bullseye" href="/sdk/focus-app">
-    Use `ForegroundApp` to expose MCP tools the agent can call during tasks.
+    Use `ForegroundApp` to expose MCP tools the agent can call on demand.
   </Card>
   <Card title="Build a Background App" icon="clock" href="/sdk/ambient-app">
     Use `BackgroundWorkerApp` to run on a schedule and submit context to the proactive agent.

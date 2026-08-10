@@ -371,7 +371,18 @@ truffile deploy --dry-run ./my-app
 truffile deploy ./my-app
 ```
 
-After deploy, trigger a task that should use one of your tools and confirm the agent calls it.
+After deployment, send a one-shot Convo smoke request:
+
+```bash
+truffile convo --new --json --quiet --timeout 120 \
+  "Use <tool behavior> and summarize the result"
+```
+
+Inspect `tool_calls` in the JSON result. The model may discover the installed
+tool through normal routing, but Convo cannot attach or restrict an app per
+chat, so this is not deterministic enforcement. Before deployment, use
+`truffile infer --mcp <url>` when you need to select and test the local MCP
+server directly.
 
 ---
 
@@ -379,7 +390,7 @@ After deploy, trigger a task that should use one of your tools and confirm the a
 
 Build a foreground app when you need:
 
-- **Request/response tools** the agent calls during a task (search, fetch, lookup, CRUD operations)
+- **Request/response tools** the agent calls during a Convo request (search, fetch, lookup, CRUD operations)
 - **Deterministic API integrations** the model should reach for in specific situations
 - **Action-style behaviors** (post, create, cancel, trigger)
 

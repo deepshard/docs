@@ -1,0 +1,214 @@
+---
+title: Convo automation
+description: "One-shot prompts, thread actions, JSON output, and exit codes for agents and scripts"
+---
+
+Supplying a prompt or action flag to `truffile convo` uses one-shot mode: the
+command performs the request, writes its result, and exits. A prompt without a
+target creates a new side thread on first send. Use `--main` only when the user
+explicitly wants Main.
+
+```bash
+truffile convo --new --json --quiet --timeout 60 \
+  "Summarize my installed apps"
+```
+
+## Prompt sources and targets
+
+Positional text, `--prompt-file`, and `--stdin` may be combined; Truffile joins
+their non-empty contents with blank lines. With piped stdin and no positional
+or file prompt, stdin is read automatically.
+
+| Flag | Behavior |
+|---|---|
+| `PROMPT...` | Join positional words as prompt text |
+| `--prompt-file PATH` | Read prompt text from a file |
+| `--stdin` | Read prompt text from stdin |
+| `--new` | Explicitly create a side thread on the first send |
+| `--main` | Target Main (thread `0`) |
+| `--thread NAME_OR_ID` | Select an existing thread by exact title or decimal ID |
+| `--thread-id ID` | Select an existing thread by decimal ID |
+| `--resume-last` | Select the thread with the newest node |
+
+The target flags are mutually exclusive. Omitting all of them selects a new
+side-thread draft. `--thread` title matching is case-insensitive and must be
+unambiguous.
+
+```bash
+truffile convo --thread "Trip research" --json --quiet "continue"
+truffile convo --thread-id 123 --json --quiet "continue"
+truffile convo --resume-last --json --quiet "continue"
+cat instructions.md | truffile convo --stdin --json --quiet --timeout 120
+truffile convo --prompt-file instructions.md --json --quiet --timeout 120
+```
+
+## Actions and output controls
+
+| Flag | Behavior |
+|---|---|
+| `--rename NAME` | Rename the selected thread, or a new thread after its first send |
+| `--history` | Print selected-thread history; requires an existing-thread target |
+| `--interrupt` | Request interruption; requires an existing-thread target |
+| `--hide THREAD` | Locally hide a side thread and exit |
+| `--restore THREAD` | Restore a locally hidden side thread and exit |
+| `--include-hidden` | Include locally hidden threads in listing and selection |
+| `--list-chats [N]` | List up to `N` visible threads; default `15` |
+| `--list-threads [N]` | Canonical synonym for `--list-chats` |
+| `--list-apps` | List installed apps for discovery only |
+| `--json` | Write one machine-readable JSON document to stdout |
+| `--quiet`, `-q` | Suppress non-result diagnostics |
+| `--show-thinking` | Write durable thinking summaries to stderr in text mode |
+| `--timeout SECONDS` | Opt into a settlement deadline; must be greater than zero |
+
+Without `--json`, final response content goes to stdout. Diagnostics, durable
+thinking requested by `--show-thinking`, and text-mode errors go to stderr.
+Use `--json --quiet` when another program will parse stdout.
+
+`--timeout` is opt-in. When it expires, Truffile requests an interrupt, emits
+the durable result it has, marks it timed out, and exits `124`.
+
+## JSON contracts
+
+### Turn result
+
+```json
+{
+  "task_id": "123",
+  "thread_id": "123",
+  "backend": "convo",
+  "title": "QA debug",
+  "device": "truffle-6272",
+  "content": "...",
+  "thinking": null,
+  "tool_calls": null,
+  "pending_user_response": false,
+  "attached_apps": null,
+  "status": "ok",
+  "error": null,
+  "interrupted": false,
+  "timed_out": false
+}
+```
+
+`thinking` and `tool_calls` are arrays when present. `status` can be `ok`,
+`error`, `interaction_required`, `interrupted`, `timeout`, or `fence_lost`.
+Setup, OAuth, and action nodes that need a supported client set
+`pending_user_response` and return `interaction_required`.
+
+### Thread list
+
+```json
+{
+  "threads": [
+    {
+      "thread_id": "123",
+      "task_id": "123",
+      "title": "QA debug",
+      "thread_kind": "NODE",
+      "created": "2026-08-10T18:30:00+00:00",
+      "updated": "2026-08-10T18:31:00+00:00",
+      "latest_node_id": "456",
+      "last_read_node_id": "456",
+      "unread_count": 0,
+      "has_unread": false,
+      "hidden_local": false
+    }
+  ],
+  "tasks": [
+    {
+      "thread_id": "123",
+      "task_id": "123",
+      "title": "QA debug",
+      "thread_kind": "NODE",
+      "created": "2026-08-10T18:30:00+00:00",
+      "updated": "2026-08-10T18:31:00+00:00",
+      "latest_node_id": "456",
+      "last_read_node_id": "456",
+      "unread_count": 0,
+      "has_unread": false,
+      "hidden_local": false
+    }
+  ],
+  "backend": "convo"
+}
+```
+
+The one-release `tasks` alias contains the same rows as `threads`.
+
+### History
+
+```json
+{
+  "history": [
+    {
+      "node_id": "456",
+      "thread_id": "123",
+      "kind": "ai",
+      "content": "...",
+      "thinking": [],
+      "tool_calls": [],
+      "created": "2026-08-10T18:31:00+00:00"
+    }
+  ],
+  "backend": "convo"
+}
+```
+
+### Local hide and restore
+
+```json
+{"thread_id": "123", "hidden_local": true}
+```
+
+```json
+{"thread_id": "123", "restored_local": true}
+```
+
+Rename returns `thread_id`, `title`, and `backend`. Interrupt returns
+`thread_id` and `interrupted: true`. App listing returns an `apps` array whose
+rows contain `name`, `bundle_id`, and `uuid`. JSON failures contain `backend`,
+`device`, `status`, and `error` when those values are available.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Connection, authentication, runtime, or agent error |
+| `2` | Invalid input/selection or an unsupported `--app` request |
+| `3` | A setup, OAuth, or action interaction must be completed in a supported client |
+| `75` | The completion fence was lost; durable output may be partial |
+| `124` | The opt-in timeout expired and interruption was requested |
+| `130` | The turn or process was interrupted |
+
+If exit code `75` is returned, do not retry or resend automatically. Durable
+output was retained, but the lost completion fence means the caller cannot
+prove that the original turn finished.
+
+## Compatibility aliases and Task cutoff
+
+`--task-id`, `--list-tasks`, `/tasks`, and the `task_id` JSON key are
+one-release compatibility aliases. Their values are decimal Convo thread IDs;
+they do not expose the retired Task backend. `/resume` and `/switch` are also
+temporary interactive spellings for the Convo thread picker.
+
+A legacy Task UUID fails with this migration error:
+
+```text
+legacy Task chats are not available after the Convo cutover; --thread-id/--task-id requires a decimal Convo thread id
+```
+
+Convo has no per-thread app allowlist. `--app` and dynamic `/<app>` requests
+fail, interactive `/apps` does not exist, and no app is attached or restricted.
+Use `truffile convo --list-apps` or `truffile list apps` for discovery only.
+
+## Safe follow-ups
+
+Only chain a follow-up after the opening command exits successfully:
+
+```bash
+response="$(truffile convo --new --json --quiet --timeout 120 "first question")"
+thread_id="$(printf '%s' "$response" | jq -r .thread_id)"
+truffile convo --thread-id "$thread_id" --json --quiet --timeout 120 \
+  "follow-up question"
+```

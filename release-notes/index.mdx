@@ -7,9 +7,37 @@ mode: "wide"
 <div className="xl:w-[calc(100%+10rem)] xl:max-w-none 2xl:w-[calc(100%+14rem)]">
   <AccordionGroup>
     <Accordion
-      title="August 1, 2026"
+      title="August 10, 2026"
       description="Latest release"
       defaultOpen
+    >
+      <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Truffile / SDK
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              Convo replaces the legacy Chat and Task-backed CLI.
+            </h3>
+            <ul className="mt-4 space-y-2 text-base leading-7 text-zinc-700 sm:mt-5 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              <li><code>truffile convo</code> replaces <code>truffile chat</code> and uses only the authenticated user's Convo backend.</li>
+              <li>The cutover is one-way: old Task histories are not migrated or listed.</li>
+              <li>Bare launches begin in an unsent side-thread draft. Main is thread <code>0</code> and requires explicit selection with <code>/main</code> or <code>--main</code>.</li>
+              <li>Use <code>/new</code>, <code>/threads</code>, and <code>/rename</code> to create, switch, and name threads.</li>
+              <li><code>/hide</code> and <code>/restore</code> manage reversible device/user-scoped local visibility. Hiding is not server deletion.</li>
+              <li>One-shot mode now supports targeting, actions, machine-readable JSON, and opt-in settlement timeouts.</li>
+              <li>Interactive <code>/apps</code> and per-chat app selection were removed. Installed-app listing is discovery only, and Convo cannot attach or restrict an app to a thread.</li>
+              <li>Temporary Task compatibility spellings such as <code>--task-id</code>, <code>--list-tasks</code>, <code>/tasks</code>, and the <code>task_id</code> JSON key carry only decimal Convo thread IDs.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Accordion>
+
+    <Accordion
+      title="August 1, 2026"
+      description="Previous release"
     >
       <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid gap-4 border-b border-zinc-200 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8 dark:border-zinc-800">

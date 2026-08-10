@@ -1,17 +1,18 @@
 ---
 title: Truffile CLI
-description: "The complete guide to using the truffile CLI — device connection, chat, inference, app management, and more"
+description: "The complete guide to using the truffile CLI — device connection, Convo, inference, app management, and more"
 ---
 
 ## Overview
 
-The `truffile` CLI is your interface to Truffle. Use it to discover and connect to devices, chat with the on-device agent, run raw model inference, and deploy apps.
+The `truffile` CLI is your interface to Truffle. Use it to discover and connect to devices, use Convo with the on-device agent, run raw model inference, and deploy apps.
 
 ```bash
 pip install truffile
 ```
 
-Running `truffile` with no arguments drops you straight into [chat mode](#chat-mode).
+Running `truffile` with no arguments opens the [Convo REPL](#convo-mode) in an
+unsent side-thread draft.
 
 ---
 
@@ -30,7 +31,7 @@ truffile validate ./apps/my-app
 truffile deploy ./apps/my-app --dry-run --json
 truffile deploy ./apps/my-app --json --non-interactive --replace
 truffile delete my-app
-truffile chat "Summarize my installed apps" --json --quiet --timeout 60
+truffile convo --new --json --quiet --timeout 60 "Summarize my installed apps"
 truffile infer "Say pong" --json --no-stream --quiet
 truffile infer --list-models --json
 ```
@@ -42,7 +43,7 @@ forms above when you are writing tests, scripts, or agent tools.
 
 ## Connecting to Your Truffle
 
-You need to connect to a device before you can chat, run inference, or manage apps.
+You need to connect to a device before you can use Convo, run inference, or manage apps.
 
 ### Scan for devices
 
@@ -108,7 +109,7 @@ truffile load all --force
 truffile load all --json
 ```
 
-The copied skills cover CLI usage, one-shot chat, raw inference, and app
+The copied skills cover CLI usage, one-shot Convo, raw inference, and app
 creation. The examples are real bundled apps that show foreground tools,
 background workers, text auth, OAuth, no-auth apps, and local bridge patterns.
 
@@ -128,15 +129,19 @@ truffile disconnect all
 
 ---
 
-## Chat Mode
+## Convo Mode
 
-Chat mode connects you to the on-device agent. It supports tasks, app integration, tool calls, thinking display, and streaming with markdown rendering.
+Convo connects to the authenticated user's stateful on-device agent. Main is
+thread `0`; user conversations otherwise live in side threads. Legacy Task
+histories are not migrated or listed after the one-way cutover.
 
 ```bash
-truffile chat
+truffile convo
 ```
 
-This is also the default — running `truffile` with no arguments enters chat.
+This is also the default. A bare launch starts in an unsent side-thread draft,
+and the first send creates that thread. Use `/new` for another draft or
+`/main` to opt into Main explicitly.
 
 ### Sending messages
 
@@ -153,72 +158,59 @@ I can help you with several things...
 
 Responses stream in real-time with a thinking orb animation while the model reasons. Tool calls appear inline above the response.
 
-### Resuming tasks
+### Threads and history
 
-Each conversation is a **task**. You can resume previous tasks:
+Use `/threads` to list and switch among user-visible threads. System and
+Bulletin threads are omitted. Messages and replies remain in the selected
+thread, and `/history` shows its durable history.
 
-```bash
-# resume with interactive task picker at startup
-truffile chat --resume
-
-# or just run truffile --resume
-truffile --resume
-```
-
-Inside chat, use `/tasks` or `/resume` to switch between tasks at any time.
-
-### Chat commands
-
-Type `/help` inside chat to see all commands.
-
-#### Task management
+Type `/help` inside Convo to see all commands.
 
 | Command | What it does |
 |---------|-------------|
-| `/tasks` | Pick from recent tasks |
-| `/resume` | Same as `/tasks` |
-| `/new` | Start a fresh conversation |
-| `/title` | Show the current task's title |
-| `/rename <name>` | Rename the current task |
-
-#### App discovery
-
-Run `/apps` to see installed apps on the connected device:
-
-```
-you> /apps
-
-installed apps:
-  • Kalshi (org.deepshard.kalshi)
-  • Slack (org.deepshard.slack)
-  • GitHub (org.deepshard.github)
-```
-
-Apps are no longer registered as chat slash commands. The agent discovers
-installed app tools through tool search and decides which tools are relevant
-for the task.
-
-For scripted one-shot calls where you explicitly want to constrain the task to
-an app, use `truffile chat --app <name-or-uuid> "..."`.
-
-#### App & task management
-
-| Command | What it does |
-|---------|-------------|
-| `/apps` | List installed apps |
-| `/deploy <path>` | Deploy an app to the device from within chat |
+| `/threads` | Pick from visible Convo threads |
+| `/new` | Start an unsent side-thread draft |
+| `/main` | Explicitly select Main |
+| `/history` | Show the selected thread's history |
+| `/title` | Show the selected thread's title |
+| `/rename <name>` | Rename the selected thread |
+| `/interrupt` | Interrupt work in the selected thread |
+| `/hide [name\|id]` | Locally hide a side thread |
+| `/restore [name\|id]` | Restore a locally hidden thread |
+| `/deploy <path>` | Deploy an app to the device from within Convo |
 | `/delete app [name]` | Delete an installed app (interactive picker if no name given) |
-| `/delete task` | Delete a task (interactive picker) |
+| `/delete task` | Compatibility alias that locally hides a side thread; reversible and not server deletion |
 | `/create <name>` | Scaffold a new app |
 | `/devices` | List connected devices |
+
+`/tasks`, `/resume`, and `/switch` are temporary compatibility spellings for
+the Convo thread picker. They do not access the retired Task backend.
+
+### Installed apps
+
+Inspect installed apps with either discovery-only command:
+
+```bash
+truffile list apps
+truffile convo --list-apps
+```
+
+Convo has no per-chat app allowlist: no app is attached to or restricted for a
+thread. Interactive `/apps`, `--app`, and dynamic `/<app>` sends are
+unavailable. The agent can still discover installed tools and decide whether
+to use them through normal routing.
+
+For all targeting, listing, action, JSON, and exit-code details, see
+[Convo automation](/sdk/convo-automation). For the complete interactive model,
+see [Convo](/sdk/convo).
 
 #### Exiting
 
 | Command | What it does |
 |---------|-------------|
-| `/exit` | Exit chat |
-| `/quit` | Exit chat |
-| **Ctrl+D** | Exit chat |
+| `/exit` | Exit Convo |
+| `/quit` | Exit Convo |
+| **Ctrl+D** | Exit Convo |
 
 ---
 
@@ -368,7 +360,7 @@ This is a great way to **test your app's MCP server locally** before deploying t
 
 ## Keyboard Shortcuts
 
-These work in both chat and infer modes.
+These work in both Convo and Infer modes.
 
 | Key | What it does |
 |-----|-------------|
@@ -473,16 +465,16 @@ Shows all inference models available on the connected device.
 
 ---
 
-## Chat vs Infer
+## Convo vs Infer
 
 Both modes let you talk to models on your Truffle, but they serve different purposes:
 
-| | Chat | Infer |
+| | Convo | Infer |
 |---|---|---|
-| **What it is** | Agent with tasks, apps, and tool use | Direct model inference REPL |
-| **Command** | `truffile chat` (or just `truffile`) | `truffile infer` |
-| **Conversations** | Persistent tasks you can resume | In-memory history, cleared on exit |
-| **Apps** | Agent can discover installed app tools with tool search | No app integration |
+| **What it is** | Stateful agent over Main and side threads | Direct model inference REPL |
+| **Command** | `truffile convo` (or just `truffile`) | `truffile infer` |
+| **Conversations** | Durable Convo threads | In-memory history, cleared on exit |
+| **Apps** | Agent can discover installed tools; no per-thread app restriction | No app integration |
 | **MCP** | No MCP (apps provide tools) | Full MCP support via `/mcp connect` |
 | **Image input** | Not available | `/attach <path-or-url>` |
 | **Generation control** | Managed by the agent | Full control (`/reasoning`, `/stream`, `/temperature`, etc.) |
@@ -495,7 +487,7 @@ Both modes let you talk to models on your Truffle, but they serve different purp
 
 | Command | Description |
 |---------|-------------|
-| `truffile` | Start chat (default) |
+| `truffile` | Start Convo in an unsent side-thread draft (default) |
 | `truffile scan` | Scan network for Truffle devices |
 | `truffile connect <device>` | Connect to a device |
 | `truffile disconnect [device\|all]` | Disconnect and clear credentials |
@@ -508,6 +500,8 @@ Both modes let you talk to models on your Truffle, but they serve different purp
 | `truffile list devices` | List connected devices |
 | `truffile delete [all\|1 2 3]` | Delete apps (interactive, by index, or all) |
 | `truffile models` | List models on connected device |
-| `truffile chat [--resume]` | Agent chat REPL |
+| `truffile convo [PROMPT...] [--prompt-file FILE\|--stdin] [--main\|--thread NAME\|--thread-id ID\|--resume-last\|--new]` | Open the Convo REPL or send a targeted one-shot prompt |
+| `truffile convo [--rename NAME\|--history\|--interrupt\|--hide THREAD\|--restore THREAD] [--include-hidden]` | Act on Convo threads |
+| `truffile convo [--list-chats [N]\|--list-threads [N]\|--list-apps] [--json]` | List Convo threads or installed apps |
 | `truffile infer [--model M] [--system S]` | Raw inference REPL |
 | `truffile help` | Show help |

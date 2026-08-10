@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: "Install the Truffile SDK to chat with and deploy apps to your Truffle"
+description: "Install the Truffile SDK to use Convo and deploy apps to your Truffle"
 ---
 
 ## Prerequisites
@@ -30,16 +30,16 @@ Requirements:
 
 After `truffile load all`, inspect the local resources before giving me the onboarding:
 - Read `./truffile/skills/truffile-cli/SKILL.md` for scan/connect/create/validate/deploy/list/delete/obsidian.
-- Read `./truffile/skills/truffile-chat/SKILL.md` for talking to the on-device agent.
+- Read `./truffile/skills/truffile-convo/SKILL.md` for the stateful on-device agent.
 - Read `./truffile/skills/truffile-infer/SKILL.md` for raw model inference and MCP testing.
 - Read `./truffile/skills/truffle-app-creator/SKILL.md` for creating or porting Truffle apps.
 - Skim the example app manifests under `./truffile/examples/*/truffile.yaml` so you know the foreground, background, auth, and install-step patterns available.
-- Run `truffile --help`, `truffile deploy --help`, `truffile chat --help`, and `truffile infer --help` so you know the CLI surface.
+- Run `truffile --help`, `truffile deploy --help`, `truffile convo --help`, and `truffile infer --help` so you know the CLI surface.
 
 When setup is complete, give me a short onboarding that covers:
 - that connecting requires a Symphony-onboarded Truffle, the User ID from Symphony > Settings, and device approval during `truffile connect`
 - how to connect a Truffle device
-- how to chat with the on-device agent
+- how to use Convo with the on-device agent, including that old Task histories are not visible after the one-way cutover
 - how to use Truffile as an inference endpoint/client
 - how to create, validate, deploy, list, and delete apps
 - where the copied skills and example apps live in this workspace
@@ -47,6 +47,8 @@ When setup is complete, give me a short onboarding that covers:
   - https://docs.truffle.net/client/overview
   - https://docs.truffle.net/sdk/installation
   - https://docs.truffle.net/sdk/cli
+  - https://docs.truffle.net/sdk/convo
+  - https://docs.truffle.net/sdk/convo-automation
   - https://docs.truffle.net/sdk/building-apps
 - End by asking whether I want to start by making a Truffle app.
 ```
@@ -139,10 +141,47 @@ pip install truffile
 Verify the installation:
 
 ```bash
-truffile help
+python -c 'from truffile.transport.client import TruffleClient; print("ok")'
+truffile convo --help
 ```
 
-You should see the Truffile welcome panel listing every command (`scan`, `connect`, `deploy`, `chat`, `infer`, and the rest). If you see the panel, you're ready to go.
+The import should print `ok`, and the help output should list the Convo prompt,
+targeting, action, and output flags. The released wheel already contains its
+generated `truffle.*_pb2` bindings.
+
+### Installing from a source checkout
+
+<Warning>
+The repo-root `truffle/` generated package is deliberately gitignored in the
+source repository. Before an editable install or wheel build, copy it from the
+generated Python tree in a matching `pyfw` checkout. Do not rely on an
+untracked `scripts/` helper.
+</Warning>
+
+```bash
+git clone https://github.com/deepshard/truffile.git
+cd truffile
+PYFW_CHECKOUT=/path/to/pyfw
+cp -a "$PYFW_CHECKOUT/python/truffle" ./truffle
+
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e .
+.venv/bin/python -c \
+  'from truffile.transport.client import TruffleClient; print("ok")'
+.venv/bin/truffile convo --help
+```
+
+The editable install imports the staged ignored package in place. If you are
+building a distributable wheel, record the selected protocol source revision
+and build only after staging the generated package:
+
+```bash
+git -C "$PYFW_CHECKOUT" rev-parse HEAD > truffle/PROTOCOL_SHA
+.venv/bin/python -m pip wheel --no-deps --wheel-dir dist .
+```
+
+That wheel embeds the generated bindings, type stubs, and `PROTOCOL_SHA`, so a
+normal installation from the wheel is self-contained.
 
 <Note>
 Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Symphony → Settings**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.
@@ -151,8 +190,8 @@ Before connecting from Truffile, onboard your device through the Symphony deskto
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Connect and use the CLI" icon="terminal" href="/sdk/cli">
-    Scan for devices, connect, chat, run inference, and deploy apps.
+  <Card title="Start a Convo" icon="comments" href="/sdk/convo">
+    Connect, open a Convo thread, and talk to the stateful on-device agent.
   </Card>
   <Card title="Build your first app" icon="wrench" href="/sdk/building-apps">
     Learn how Truffle apps are structured and scaffold one with `truffile create`.

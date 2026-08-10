@@ -1,0 +1,88 @@
+---
+title: Convo
+description: "Use the stateful on-device agent through Main and side threads"
+---
+
+`truffile convo` opens the authenticated user's Convo on the connected device.
+Convo is the only backend for this command. Chats from the retired `Task_*`
+backend are not migrated or listed after the one-way cutover.
+
+For scripts and coding agents, see the [one-shot and automation reference](/sdk/convo-automation).
+
+## Main and side threads
+
+Main is thread `0`. A bare launch does not select Main: it opens an unsent
+side-thread draft instead.
+
+```bash
+truffile convo
+```
+
+The first message creates that side thread. Use `/new` whenever you want
+another unsent side-thread draft. Main always requires an explicit opt-in:
+
+```bash
+truffile convo --main
+```
+
+Inside the REPL, `/main` selects Main and `/threads` lists and switches among
+user-visible threads. System and Bulletin threads, including thread `-1`, are
+not shown and cannot be selected.
+
+Messages and replies remain in the selected thread, so follow-up messages use
+its durable history until you switch threads or start a new draft.
+
+## Interactive commands
+
+Type `/help` in the REPL to show the commands supported by your installed
+Truffile version.
+
+| Command | What it does |
+|---|---|
+| `/threads` | List and switch among visible Convo threads |
+| `/new` | Start an unsent side-thread draft |
+| `/main` | Explicitly switch to Main (thread `0`) |
+| `/history` | Show history for the selected thread |
+| `/title` | Show the selected thread's title |
+| `/rename <name>` | Rename the selected thread |
+| `/interrupt` | Request interruption of work in the selected thread |
+| `/hide [name\|id]` | Hide a side thread on this machine |
+| `/restore [name\|id]` | Restore a locally hidden thread |
+| `/deploy <path>` | Deploy an app from inside Convo |
+| `/delete app [name]` | Delete an installed app |
+| `/create <name>` | Scaffold an app |
+| `/devices` | List connected devices |
+| `/exit` | Exit Convo |
+
+`/tasks`, `/resume`, and `/switch` temporarily open the same Convo thread
+picker as `/threads`; they do not access legacy Task chats. `/delete task` is
+also a compatibility entry, but it only performs the reversible local hide
+described below. It does not delete anything from the server.
+
+## Local hide and restore
+
+`/hide` removes a side thread from this Truffile installation's normal picker.
+The hidden-thread state is local, reversible, and scoped to the device and
+authenticated user. It never deletes a Convo thread from the server. Main and
+system threads cannot be hidden.
+
+Use `/restore` to return a hidden thread to the normal list. In automation,
+`--hide`, `--restore`, and `--include-hidden` provide the same local behavior.
+
+## Installed apps and tool routing
+
+Convo has no per-chat or per-thread app allowlist. Nothing is attached to a
+thread, and the CLI cannot force or restrict a request to one installed app.
+The agent may discover installed tools and decide to use them through its
+normal routing.
+
+Interactive `/apps`, dynamic `/<app>` selection, and `--app` are unavailable.
+Use either discovery-only command instead:
+
+```bash
+truffile list apps
+truffile convo --list-apps
+```
+
+To test an app deterministically before deployment, connect its local MCP
+server with [`truffile infer --mcp`](/sdk/cli#mcp-integration).

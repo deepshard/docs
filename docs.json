@@ -33,6 +33,8 @@
             "pages": [
               "sdk/installation",
               "sdk/cli",
+              "sdk/convo",
+              "sdk/convo-automation",
               "sdk/inference"
             ]
           },
