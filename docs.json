@@ -39,6 +39,12 @@
             ]
           },
           {
+            "group": "App Review",
+            "pages": [
+              "review/figma"
+            ]
+          },
+          {
             "group": "Building Apps",
             "pages": [
               "sdk/building-apps",

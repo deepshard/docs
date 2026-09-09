@@ -1,0 +1,76 @@
+---
+title: Figma review
+description: "Connect to the Truffle review workspace and try the Figma integration."
+---
+
+Use the launcher below to connect to our review workspace on **truffle-3615**,
+authorize Figma in your browser, and start chatting. You do not need a Truffle
+device or the Symphony desktop app.
+
+## Start the review
+
+Use a **Linux or macOS desktop terminal** with **Python 3.12 or newer** and
+`curl` installed. Linux also needs Python's `venv` package. Run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/deepshard/docs/main/scripts/figma-review.sh | bash
+```
+
+The launcher downloads the tested reviewer CLI, checks its SHA256, installs it
+and Chromium in your user account, then:
+
+1. Asks you to paste the **private Truffle invitation** provided with your review
+   access. Input is hidden. This connects to the workspace on truffle-3615.
+2. Starts the Figma installer. Accept the prompt, sign in to Figma in the browser
+   that opens, and authorize the integration.
+3. Opens a chat in your terminal. Try **Use Figma to show my account profile.**
+
+The invitation is supplied separately; it is not included in the public script.
+Use your own Figma login. If Figma is already installed in the review workspace,
+the launcher opens chat directly using that existing connection.
+
+Run the same command to return later. Your local setup and Truffle connection
+are saved separately from your usual Truffile settings in
+`~/.local/share/truffle-figma-review`.
+
+[View or download the launcher](https://raw.githubusercontent.com/deepshard/docs/main/scripts/figma-review.sh).
+You can also download it, inspect it, and run `bash figma-review.sh`.
+
+## Try a Figma file
+
+Use a file accessible to the Figma account connected to this workspace. Paste its
+URL into chat and try:
+
+- **Show the metadata for this file: YOUR_FIGMA_FILE_URL.**
+- **Summarize the pages and top-level objects in this file: YOUR_FIGMA_FILE_URL.**
+- **Read the details of node NODE_ID in that file.** Use a node ID from the summary.
+- **Export node NODE_ID from that file as a PNG.**
+- **List the comments in that file.**
+
+To test comment posting, use a disposable file you own and explicitly ask:
+**Post the comment "Truffle review test" on YOUR_FIGMA_FILE_URL. I confirm this
+comment should be posted.** Then verify the comment in Figma.
+
+File operations start from a pasted link. The integration does not currently
+provide an account-wide file browser.
+
+## Troubleshooting
+
+- **“OAuth app … doesn't exist”:** Check which Figma account you used. Draft
+  OAuth apps are limited to their creator and plan admins. Contact the app owner
+  if your review account cannot authorize; the public documentation does not
+  describe special access for Figma reviewers.
+- **Expired or rejected invitation:** Ask the Truffle owner for a replacement.
+  Rerun with `curl -fsSL https://raw.githubusercontent.com/deepshard/docs/main/scripts/figma-review.sh | bash -s -- --reconnect`
+  to enter it.
+- **No browser window:** Run from your desktop terminal. An SSH-only terminal
+  cannot display the sign-in browser on your computer.
+- **Missing Chromium system libraries on Linux:** Run
+  `~/.local/share/truffle-figma-review/20260909.1/venv/bin/python -m playwright install-deps chromium`,
+  then rerun the launcher. This dependency command may request administrator access.
+- **Python or venv missing:** Follow the [Python installation steps](/sdk/installation#install-python).
+
+The reviewer build has been validated on Linux with Python 3.12. macOS is
+supported by the launcher but has not been validated in this review run.
+See [Figma's OAuth documentation](https://developers.figma.com/docs/rest-api/oauth-apps/)
+for authorization and app-review requirements.
