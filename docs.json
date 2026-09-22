@@ -41,7 +41,8 @@
           {
             "group": "App Review",
             "pages": [
-              "review/figma"
+              "review/figma",
+              "review/tiktok"
             ]
           },
           {

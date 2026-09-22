@@ -1,0 +1,80 @@
+---
+title: TikTok review
+description: "Connect to the Truffle review workspace and try the TikTok integration."
+---
+
+Use the launcher below to connect to our review workspace on **truffle-3615**,
+authorize TikTok in your browser, and start chatting. You do not need a Truffle
+device or the Symphony desktop app.
+
+Truffle is a personal AI device. The TikTok app runs on that device and lets its
+owner read **their own** TikTok profile, account stats, and public video library.
+It is read-only: nothing is posted, edited, or deleted on TikTok, and it cannot
+open other accounts or search public TikTok.
+
+## Start the review
+
+Use a **Linux or macOS desktop terminal** with **Python 3.12 or newer** and
+`curl` installed. Linux also needs Python's `venv` package. Run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/deepshard/docs/main/scripts/tiktok-review.sh | bash
+```
+
+The launcher downloads the tested reviewer CLI, checks its SHA256, installs it
+and Chromium in your user account, then:
+
+1. Asks you to paste the **private Truffle invitation** provided with your review
+   access (the test account password in the submission). Input is hidden. This
+   connects to the workspace on truffle-3615.
+2. Starts the TikTok installer. Accept the prompt, sign in to TikTok in the
+   browser that opens, and authorize the integration.
+3. Opens a chat in your terminal. Try **Use TikTok to show my profile and
+   account stats.**
+
+The invitation is supplied separately; it is not included in the public script.
+Use your own TikTok login. If TikTok is already installed in the review
+workspace, the launcher opens chat directly using that existing connection.
+
+Run the same command to return later. Your local setup and Truffle connection
+are saved separately from your usual Truffile settings in
+`~/.local/share/truffle-tiktok-review`.
+
+[View or download the launcher](https://raw.githubusercontent.com/deepshard/docs/main/scripts/tiktok-review.sh).
+You can also download it, inspect it, and run `bash tiktok-review.sh`.
+
+## Try the integration
+
+Each prompt below maps to one requested scope.
+
+- **Use TikTok to show my profile.** — `user.info.basic` and `user.info.profile`
+  (display name, username, avatar, bio, profile link).
+- **What are my TikTok follower, following, likes, and video counts?** —
+  `user.info.stats`.
+- **List my 10 most recent TikTok videos.** — `video.list`. Returns your own
+  public videos, newest first, with share links.
+- **Show the current view, like, comment, and share counts for the first two
+  videos in that list.** — `video.list`, exact video IDs from the previous step.
+
+Every prompt reads only the account you authorized. There is no posting,
+uploading, commenting, or deleting, and no access to other users' data.
+
+## Troubleshooting
+
+- **TikTok refuses the sign-in or authorization:** Check which TikTok account
+  you used. Contact the app owner if your review account cannot authorize; we
+  can add it to the app's test users or coordinate reviewer access.
+- **Expired or rejected invitation:** Ask the Truffle owner for a replacement.
+  Rerun with `curl -fsSL https://raw.githubusercontent.com/deepshard/docs/main/scripts/tiktok-review.sh | bash -s -- --reconnect`
+  to enter it.
+- **No browser window:** Run from your desktop terminal. An SSH-only terminal
+  cannot display the sign-in browser on your computer.
+- **Missing Chromium system libraries on Linux:** Run
+  `~/.local/share/truffle-tiktok-review/20260909.1/venv/bin/python -m playwright install-deps chromium`,
+  then rerun the launcher. This dependency command may request administrator access.
+- **Python or venv missing:** Follow the [Python installation steps](/sdk/installation#install-python).
+
+The reviewer build has been validated on Linux with Python 3.12. macOS is
+supported by the launcher but has not been validated in this review run.
+See [TikTok's Login Kit documentation](https://developers.tiktok.com/doc/login-kit-web)
+for authorization and app-review requirements.
