@@ -24,17 +24,32 @@ curl -fsSL https://raw.githubusercontent.com/deepshard/docs/main/scripts/tiktok-
 The launcher downloads the tested reviewer CLI, checks its SHA256, installs it
 and Chromium in your user account, then:
 
-1. Asks you to paste the **private Truffle invitation** provided with your review
-   access (the test account password in the submission). Input is hidden. This
-   connects to the workspace on truffle-3615.
+1. Asks you to paste the **Truffle invitation** from the [Test access](#test-access)
+   section below. Input is hidden. This connects to the workspace on truffle-3615.
 2. Starts the TikTok installer. Accept the prompt, sign in to TikTok in the
    browser that opens, and authorize the integration.
 3. Opens a chat in your terminal. Try **Use TikTok to show my profile and
    account stats.**
 
-The invitation is supplied separately; it is not included in the public script.
 Use your own TikTok login. If TikTok is already installed in the review
 workspace, the launcher opens chat directly using that existing connection.
+
+## Test access
+
+Reviewer workspace on truffle-3615, dedicated to this TikTok review. No Truffle
+hardware or signup is needed.
+
+- **Username:** `tiktok-test`
+- **Invitation** (paste it at the launcher's hidden prompt; it is the test
+  account password in the submission):
+
+```text
+truffle://remote/setup?deviceId=truffle-3615&sessionToken=d4201524-0825-4087-8c1b-90dcda5ca68e&clientUserId=35598109&remoteAddress=tunnel.us.0.itsalltruffles.com%3A443&jwt=eyJhbGciOiJSUzI1NiIsImtpZCI6InJlbGF5LWtleS0xIiwidHlwIjoiSldUIn0.eyJpc3MiOiJ0cnVmZmxlLWJhY2tlbmQiLCJhdWQiOiJ0cnVmZmxlLXJlbGF5Iiwic3ViIjoiZGV2aWNlLWxvY2FsLWNsaWVudCIsImRldmljZV9pZCI6InRydWZmbGUtMzYxNSIsInNjb3BlIjoicmVsYXk6aHR0cCByZWxheTpncnBjIiwiaWF0IjoxNzkwMDUzODg3LCJuYmYiOjE3OTAwNTM4ODcsImV4cCI6MTc5NzgyOTg4NywianRpIjoiYzJjMDllYzktMTdiYy00OTg0LWFkNGYtYWE2MDBkYjcwYTc4In0.Ec8N0hX0Y1FHPp7jyyMne9XuVPxwSkltkoYbl6sFWPqoR0u2VugVWt6aUOsYXVMVT1PrETdqr-qwEWB1WgkJV0gmlUoI3GrDcq4OIyDDxe5MDNnHC-icspLVnbHLU21H9eNKQriZ5x5-yn8xLzvMySinbWS05julegTMrN0D-Wx38n_pENVVy223ekOVZpOlUylqE2aFyFM4qYP-rHv_ZHhE7miaJawtik6fvfyAa9MceuQQFfPT9SH4WAWDUpxmdDnbZbyUx20AizzLzZNOFRsOGPEnlaQfTm80xjejvd6iGEllcOFE9GvmDaQSL1lgy9Ajy74Qvo7Ikw1DWJ7cpQ&expiresAt=2026-12-21T05%3A11%3A27Z
+```
+
+You can also [download the invitation as a file](https://raw.githubusercontent.com/deepshard/docs/main/downloads/tiktok-review/invitation.txt).
+The invitation is valid until 2026-12-21 and grants access only to this
+review workspace. Ask the app owner for a replacement if it has expired.
 
 Run the same command to return later. Your local setup and Truffle connection
 are saved separately from your usual Truffile settings in
