@@ -1,32 +1,32 @@
-# Mintlify Starter Kit
+# Truffle Documentation
 
-Click on `Use this template` to copy the Mintlify starter kit. The starter kit contains examples including
-
-- Guide pages
-- Navigation
-- Customizations
-- API Reference pages
-- Use of popular components
+Public documentation for Truffle, Symphony, and the Truffile SDK, built with
+[Mintlify](https://mintlify.com/).
 
 ### Development
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mintlify) to preview the documentation changes locally. To install, use the following command
+Install the [Mintlify CLI](https://www.npmjs.com/package/mintlify):
 
-```
+```bash
 npm i -g mintlify
 ```
 
-Run the following command at the root of your documentation (where docs.json is)
+From this repository's root, start the local preview:
 
-```
+```bash
 mintlify dev
 ```
 
-### Publishing Changes
+Validate changes before publishing:
 
-Install our Github App to auto propagate changes from your repo to your deployment. Changes will be deployed to production automatically after pushing to the default branch. Find the link to install on your dashboard. 
+```bash
+mintlify validate
+mintlify broken-links
+bash scripts/check-public-content.sh
+```
 
-#### Troubleshooting
+## Publishing
 
-- Mintlify dev isn't running - Run `mintlify install` it'll re-install dependencies.
-- Page loads as a 404 - Make sure you are running in a folder with `docs.json`
+Changes pushed to `main` are deployed automatically. This is a public
+repository: never commit app-review materials, invitations, access tokens,
+support bundles, or internal working documents.

@@ -39,13 +39,6 @@
             ]
           },
           {
-            "group": "App Review",
-            "pages": [
-              "review/figma",
-              "review/tiktok"
-            ]
-          },
-          {
             "group": "Building Apps",
             "pages": [
               "sdk/building-apps",

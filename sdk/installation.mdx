@@ -146,42 +146,7 @@ truffile convo --help
 ```
 
 The import should print `ok`, and the help output should list the Convo prompt,
-targeting, action, and output flags. The released wheel already contains its
-generated `truffle.*_pb2` bindings.
-
-### Installing from a source checkout
-
-<Warning>
-The repo-root `truffle/` generated package is deliberately gitignored in the
-source repository. Before an editable install or wheel build, copy it from the
-generated Python tree in a matching `pyfw` checkout. Do not rely on an
-untracked `scripts/` helper.
-</Warning>
-
-```bash
-git clone https://github.com/deepshard/truffile.git
-cd truffile
-PYFW_CHECKOUT=/path/to/pyfw
-cp -a "$PYFW_CHECKOUT/python/truffle" ./truffle
-
-python3.12 -m venv .venv
-.venv/bin/python -m pip install -e .
-.venv/bin/python -c \
-  'from truffile.transport.client import TruffleClient; print("ok")'
-.venv/bin/truffile convo --help
-```
-
-The editable install imports the staged ignored package in place. If you are
-building a distributable wheel, record the selected protocol source revision
-and build only after staging the generated package:
-
-```bash
-git -C "$PYFW_CHECKOUT" rev-parse HEAD > truffle/PROTOCOL_SHA
-.venv/bin/python -m pip wheel --no-deps --wheel-dir dist .
-```
-
-That wheel embeds the generated bindings, type stubs, and `PROTOCOL_SHA`, so a
-normal installation from the wheel is self-contained.
+targeting, action, and output flags.
 
 <Note>
 Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Symphony → Settings**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.

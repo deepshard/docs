@@ -1,3 +1,9 @@
 # Local source checkout and support bundle are not documentation content.
 truffleos-client/
-tfw-radiated-support-truffle-8767-20260728T171203.tar.gz
+tfw-radiated-support-*.tar.gz
+email-template/
+
+# App-review materials must not be included in public Mintlify builds.
+review/
+downloads/*-review/
+scripts/*-review.sh

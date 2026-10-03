@@ -22,7 +22,7 @@ Most workflows can be driven with explicit arguments, which makes them easy to
 test in CI or from another agent:
 
 ```bash
-truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
+truffile connect truffle-1234 --user-id "$TRUFFLE_USER_ID"
 truffile list devices
 truffile list apps --json
 truffile load all
@@ -56,9 +56,9 @@ truffile scan
 
 Found 3 Truffle device(s):
 
-  1. truffle-6070 (192.168.1.109)
-  2. truffle-5970 (192.168.1.104) [connected]
-  3. truffle-6272 (192.168.1.32)
+  1. truffle-1234 (192.0.2.10)
+  2. truffle-5678 (192.0.2.11) [connected]
+  3. truffle-9012 (192.0.2.12)
 
 Select device to connect (1-3) or press Enter to cancel:
 ```
@@ -70,7 +70,7 @@ Select a device by number to start the connection flow.
 If you already know your device name:
 
 ```bash
-truffile connect truffle-6272 --user-id "$TRUFFLE_USER_ID"
+truffile connect truffle-1234 --user-id "$TRUFFLE_USER_ID"
 ```
 
 If you omit `--user-id`, you'll be prompted for your **User ID** (found in **Symphony > Settings**), then asked to approve the connection on your device.
@@ -117,7 +117,7 @@ background workers, text auth, OAuth, no-auth apps, and local bridge patterns.
 
 ```bash
 # disconnect from a specific device
-truffile disconnect truffle-6272
+truffile disconnect truffle-1234
 
 # disconnect from all devices and clear all saved credentials
 truffile disconnect all

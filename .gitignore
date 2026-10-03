@@ -2,4 +2,14 @@
 .DS_Store
 
 # Node modules cache
-node_modules/.cache/ 
+node_modules/.cache/
+
+# Local tooling and support artifacts are not public documentation.
+/email-template/
+/truffleos-client/
+/tfw-radiated-support-*.tar.gz
+
+# App-review materials belong in a private repository, never public docs.
+/review/
+/downloads/*-review/
+/scripts/*-review.sh
