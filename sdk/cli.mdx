@@ -22,7 +22,7 @@ Most workflows can be driven with explicit arguments, which makes them easy to
 test in CI or from another agent:
 
 ```bash
-truffile connect truffle-1234 --user-id "$TRUFFLE_USER_ID"
+truffile connect truffle-1234
 truffile list devices
 truffile list apps --json
 truffile load all
@@ -70,15 +70,15 @@ Select a device by number to start the connection flow.
 If you already know your device name:
 
 ```bash
-truffile connect truffle-1234 --user-id "$TRUFFLE_USER_ID"
+truffile connect truffle-1234
 ```
 
-If you omit `--user-id`, you'll be prompted for your **User ID** (found in **Symphony > Settings**), then asked to approve the connection on your device.
+Enter your Truffle username and password when prompted, then approve the connection on your device.
 
 Credentials are saved locally — subsequent connections are automatic.
 
 <Note>
-Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview), finish device onboarding there, copy your User ID from **Symphony > Settings**, then approve the session on your Truffle when the CLI asks.
+Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview) and finish device onboarding there. The CLI will ask for your Truffle username and password before you approve the session on your device.
 </Note>
 
 ---

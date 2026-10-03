@@ -26,7 +26,7 @@ Requirements:
 - Install Truffile with `pip install truffile`; if it is already installed, make sure it is upgraded to the latest version.
 - Verify the install with `truffile --help`.
 - Run `truffile load all` so the bundled skills and example apps are copied into this workspace under `./truffile/skills` and `./truffile/examples`.
-- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then get my User ID from Symphony > Settings, then run `truffile scan` and `truffile connect <device-name> --user-id <user-id>`. During `truffile connect`, I must approve the new session on my Truffle device.
+- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then run `truffile scan` and `truffile connect <device-name>`. During `truffile connect`, I can enter my Truffle username and password, then approve the new session on my Truffle device.
 
 After `truffile load all`, inspect the local resources before giving me the onboarding:
 - Read `./truffile/skills/truffile-cli/SKILL.md` for scan/connect/create/validate/deploy/list/delete/obsidian.
@@ -37,7 +37,7 @@ After `truffile load all`, inspect the local resources before giving me the onbo
 - Run `truffile --help`, `truffile deploy --help`, `truffile convo --help`, and `truffile infer --help` so you know the CLI surface.
 
 When setup is complete, give me a short onboarding that covers:
-- that connecting requires a Symphony-onboarded Truffle, the User ID from Symphony > Settings, and device approval during `truffile connect`
+- that connecting requires a Symphony-onboarded Truffle, my Truffle username and password, and device approval during `truffile connect`
 - how to connect a Truffle device
 - how to use Convo with the on-device agent, including that old Task histories are not visible after the one-way cutover
 - how to use Truffile as an inference endpoint/client
@@ -138,18 +138,8 @@ With your environment activated:
 pip install truffile
 ```
 
-Verify the installation:
-
-```bash
-python -c 'from truffile.transport.client import TruffleClient; print("ok")'
-truffile convo --help
-```
-
-The import should print `ok`, and the help output should list the Convo prompt,
-targeting, action, and output flags.
-
 <Note>
-Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview), complete device onboarding, then copy your User ID from **Symphony → Settings**. `truffile connect` will ask for that User ID and then you must approve the new session on your Truffle device.
+Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview) and complete device onboarding. When you run `truffile connect`, enter your Truffle username and password, then approve the new session on your Truffle device.
 </Note>
 
 ## Next steps
