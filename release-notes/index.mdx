@@ -7,9 +7,52 @@ mode: "wide"
 <div className="xl:w-[calc(100%+10rem)] xl:max-w-none 2xl:w-[calc(100%+14rem)]">
   <AccordionGroup>
     <Accordion
-      title="September 28, 2026"
+      title="October 23, 2026"
       description="Latest release"
       defaultOpen
+    >
+      <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Symphony
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              Talk to your cards, and explore your world with Context map.
+            </h3>
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              poster="/images/symphony/symphony-oct23-poster.jpg"
+              className="mt-5 w-full rounded-2xl border border-zinc-200 bg-black object-cover sm:rounded-3xl dark:border-zinc-800"
+            >
+              <source
+                src="/images/symphony/symphony-oct23.mp4"
+                type="video/mp4"
+              />
+              Your browser does not support inline video playback.
+            </video>
+            <ul className="mt-5 space-y-2 text-base leading-7 text-zinc-700 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              <li><strong>Talk to your cards on Home.</strong> Every card now has its own Ask Truffle bar, so you can reply, follow up, or ask Truffle to take action without opening a new chat.</li>
+              <li><strong>Introducing Context map.</strong> Explore the people, projects, meetings, and notes Truffle knows about. Switch between All time and Now, hover over anything for more context, or ask the map questions like “What project was I working on last week?”</li>
+              <li><strong>Eleven new apps.</strong> Granola, Figma, Mercury, Kalshi, X, PhotoCraft, LightCraft, SoundCraft, Spotify, Apple Music, and Calendly are now available in Truffle.</li>
+            </ul>
+            <p className="mt-4 mb-0 text-base leading-7 text-zinc-700 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              Head to Home or Context map in Symphony, or paste this prompt to your Truffle:
+            </p>
+
+            ```text
+            hey, looks like i can talk to my cards on Home now and there's a new Context map. give me a quick rundown of both, and show me the new apps i can connect
+            ```
+          </div>
+        </div>
+      </div>
+    </Accordion>
+
+    <Accordion
+      title="September 28, 2026"
+      description="Previous release"
     >
       <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
