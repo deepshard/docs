@@ -11,10 +11,15 @@ A Truffle app is a containerized Python program that runs on your Truffle and ex
 | **Background** | On a schedule | Submits context to the proactive agent |
 | **Hybrid** | On demand + on a schedule | Both: tools *and* scheduled context |
 
-You pick the shape by including a `foreground`, `background`, or both sections in your `truffile.yaml`.
+You pick the shape with `metadata.foreground`, `metadata.background`, or both
+in `truffile.yaml`. Foreground apps can run Python tools or use a native remote
+MCP connector. See [accounts and authentication](/sdk/accounts) for a complete
+connector example and connection-scoped credentials.
 
 The supported development loop is intentionally CLI-first: scaffold locally,
-validate locally, dry-run the deploy plan, then deploy to a connected device.
+check the bundle locally, preview the upload, then deploy through the native
+installer and builders. Use `--update` for later code changes that preserve
+installed accounts.
 
 The bundled examples live under `truffile/app-store/` in the `truffile` repo. Treat them as reference implementations:
 
@@ -48,7 +53,8 @@ from truffile.app_runtime import (
 )
 ```
 
-The source lives in `truffile/app_runtime/` in the repo and ships with the installed package. Once you `pip install truffile`, the same runtime is importable from app code running on your device.
+The runtime is copied from PyFW into the release wheel; it is not tracked in
+the SDK source checkout. It ships as `truffile.app_runtime` in the installed package. Once you `pip install truffile`, the same runtime is importable from app code running on your device.
 
 There are two other entry points that import the same names:
 
@@ -84,7 +90,8 @@ Flags:
 - `truffile create <name> --path <dir>` — set name and base path
 - `truffile create` — fully interactive
 
-The generated `my_app_foreground.py` and `my_app_background.py` are stubs using the real SDK classes. Delete whichever you don't need — the app type is inferred from which `foreground` / `background` sections you keep in `truffile.yaml`.
+The foreground starter includes a ping tool. The background starter is a
+placeholder that you must implement before relying on scheduled work. Delete whichever you don't need — the app type is inferred from which `foreground` / `background` sections you keep in `truffile.yaml`.
 
 ---
 
@@ -104,9 +111,13 @@ The skill handles architecture decisions (foreground/background/hybrid, auth typ
 
 ## `truffile.yaml` structure
 
-Every app needs a `truffile.yaml`. Minimum viable config:
+Every app needs a `truffile.yaml`. This authenticated process example assumes
+you implement the Python entrypoints, including a `--verify` mode that checks
+the API key and exits. For a first ping test, use the generated scaffold as-is.
 
 ```yaml
+truffile_version: 4
+connections: multi
 metadata:
   name: My App
   bundle_id: org.example.myapp
@@ -136,17 +147,22 @@ metadata:
 steps:
   - name: Install dependencies
     type: bash
+    scope: install
     run: |
       pip install --no-cache-dir httpx
 
   - name: Copy app files
     type: files
+    scope: install
     files:
       - source: ./my_app_foreground.py
+        destination: ./my_app_foreground.py
       - source: ./my_app_background.py
+        destination: ./my_app_background.py
 
   - name: Configure access token
     type: text
+    scope: connection
     content: |
       Enter an API key from https://example.com/settings/tokens
     fields:
@@ -177,7 +193,9 @@ Steps run during installation on the device, in order. The manifest supports:
 See the [Install steps reference](/sdk/install-steps) for every option on each type — field shapes, validators, exit code semantics, and multi-field examples.
 
 <Note>
-`vnc` / browser setup steps are not supported through `truffile`. `truffile validate` rejects them with an explanation and tells users to install those apps through Symphony Settings.
+Native deployment can present browser/VNC setup cards from firmware. Open the
+shown setup URL and follow the app's flow. The explicit legacy builder supports
+only its older step subset; use normal deploy for modern manifests.
 </Note>
 
 ---
@@ -194,9 +212,14 @@ Pick the smallest auth surface that matches the upstream service:
 | Remote MCP OAuth | The upstream MCP server owns OAuth metadata or dynamic client registration | `oauth` with resource metadata / DCR fields | `notion` |
 | Local bridge | The app on the device needs to talk back to a process on the user's computer | usually `text`, often prefilled by a helper command | `obsidian` |
 
-For `text` auth, add a validator that calls `python ./foreground.py --verify` or `python ./background.py --verify`. For OAuth, write a tiny auth helper around `OAuth` or `RemoteMcpOAuth`, store the token file path in an env var, and verify it in a follow-up `bash` step.
+For `text` auth, implement a provider check and call it from a connection-scoped
+validator. Native OAuth stores tokens for the selected connection. Custom Python
+apps use runtime credential helpers; native connectors declare an OAuth
+`app_var_key` matching their connection step. See the [account guide](/sdk/accounts)
+for the complete connector recipe. Older bundled token-file examples should not
+be copied into shared state for a multi-account app.
 
-If an update reaches an auth step that cannot be refreshed non-interactively, fail clearly and tell the user to reauthenticate from Settings.
+If an update reaches an auth step that cannot be refreshed non-interactively, fail clearly and ask the user to run `truffile connections reconnect "My App"`.
 
 ---
 
@@ -208,11 +231,19 @@ truffile deploy --dry-run ./my-app
 truffile deploy ./my-app
 ```
 
-- **`validate`** checks the `truffile.yaml` structure, confirms referenced files exist, and parses all Python files for syntax errors.
-- **`deploy --dry-run`** builds the deploy plan without changing anything on the device, so you can see what files will be uploaded, what bash steps will run, and how the process config will look.
-- **`deploy`** opens a build session on the device, uploads files, runs your steps in order, and registers the app.
+- **`validate`** checks bundle structure and basic metadata. Use `python -m compileall -q ./my-app` separately for Python syntax.
+- **`deploy --dry-run`** packages and describes the bundle without changing the device.
+- **`deploy`** sends the original manifest to firmware for semantic validation, builder execution and account setup.
 
-Add `--interactive` to `deploy` to open a shell inside the app's container when the build steps finish — useful for installing extra packages or debugging before finalizing.
+After editing app code, run `truffile deploy ./my-app --update`. This preserves
+accounts, credentials and saved settings. `--replace` deliberately resets
+accounts after confirmation. Current firmware is required for uploaded updates
+and replacements; the CLI checks support before either operation.
+
+`--interactive` opens the explicit legacy builder's shell. Ordinary native
+sign-in prompts do not require that flag. See [deployment](/sdk/deployment)
+for packaging exclusions, timeouts, account selection and scripted setup.
+
 
 After deployment, use an agent-safe one-shot request as a routing smoke test:
 

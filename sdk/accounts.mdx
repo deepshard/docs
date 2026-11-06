@@ -1,0 +1,185 @@
+---
+title: Accounts and authentication
+description: "Build apps with separate accounts, connection-scoped credentials, OAuth, and remote MCP connectors"
+---
+
+An installed app has one bundle identity and one or more account connections.
+Shared code is installed once. Credentials, account identity, and permission
+choices belong to each connection.
+
+## Choose the authentication flow
+
+| Flow | Installer setup | CLI interaction |
+| --- | --- | --- |
+| Public service | Files/dependencies and optional welcome step | Continue when prompted |
+| API key, token, or configuration form | `text` step with `scope: connection` | Enter fields; password fields are hidden |
+| Browser OAuth | Connection-scoped `oauth` step | Open the authorization URL and complete the callback/code prompt |
+| Remote MCP OAuth | Native connector plus connection-scoped OAuth | Same browser flow; firmware handles discovery, registration, and token storage |
+| Device-code approval | Provider-specific native setup plan | Open the approval link; CLI waits for completion |
+| Browser/VNC setup | Provider-specific native setup plan | Open the device setup URL and complete the displayed steps |
+
+The CLI drives the setup plan supplied by firmware. Provider endpoints, client
+registration, scopes, and callback URLs must match the provider's requirements.
+Supporting a setup card does not establish that every provider works with it.
+
+## Separate installation from account setup
+
+For a process-based app, use `truffile_version: 4` and `connections: multi` when
+multiple accounts are supported. Install-scoped steps prepare shared code;
+connection-scoped steps collect or validate credentials for the first account,
+additional accounts, and reconnections.
+
+```yaml
+truffile_version: 4
+connections: multi
+# Include your metadata and foreground/background process configuration.
+steps:
+  - name: Copy code
+    type: files
+    scope: install
+    files:
+      - source: service.py
+        destination: ./service.py
+  - name: Connect account
+    type: text
+    scope: connection
+    fields:
+      - name: api_key
+        label: API key
+        type: password
+        env: SERVICE_API_KEY
+```
+
+This is a setup fragment, not a complete app. Add a provider validation step
+before reporting the account as connected. The selected connection's runtime
+receives its own `SERVICE_API_KEY`; do not embed secrets in the manifest or
+shared app files. For custom Python apps, expose provider-confirmed identity
+through `truffle://user-info` so account labels are meaningful.
+
+## A remote MCP connector with OAuth
+
+A native connector uses `truffile_version: 5` and
+`metadata.foreground.connector`. Firmware connects to the upstream MCP server;
+you do not need to write a Python proxy for this example.
+
+Create a directory containing `icon.png` and this `truffile.yaml`. Use your own
+unique bundle ID if you adapt the example for distribution.
+
+```yaml
+truffile_version: 5
+connections: multi
+metadata:
+  name: Todoist Tutorial
+  bundle_id: org.example.todoist.tutorial
+  description: Connect Todoist accounts through its remote MCP service.
+  icon_file: icon.png
+  foreground:
+    connector:
+      upstream_url: https://ai.todoist.net/mcp
+      transport:
+        request_timeout_seconds: 45
+        max_read_retries: 1
+        retry_delay_seconds: 1
+      auth:
+        mode: oauth
+        app_var_key: todoist_oauth_state
+        token_endpoint: https://todoist.com/oauth/access_token
+        resource: https://ai.todoist.net/mcp
+      overlay: {}
+      identity:
+        sources:
+        - tool: user-info
+          map:
+            provider_subject: userId
+            email: email
+            display_name: fullName
+steps:
+- name: Sign in to Todoist
+  type: oauth
+  scope: connection
+  provider: remote_mcp
+  description: Authorize Todoist, then return to the terminal.
+  redirect_uri: http://localhost:18791/callback
+  scopes:
+  - data:read_write
+  dynamic_client_registration: true
+  resource_metadata_endpoint: https://ai.todoist.net/.well-known/oauth-protected-resource/mcp
+  authorization_server_metadata_endpoint: https://todoist.com/.well-known/oauth-authorization-server
+  registration_endpoint: https://todoist.com/oauth/register
+  oauth_resource: https://ai.todoist.net/mcp
+  client_name: Todoist Tutorial
+  auth_endpoint: https://todoist.com/oauth/authorize
+  token_endpoint: https://todoist.com/oauth/access_token
+  token_endpoint_auth_method: none
+  client_id_env: TODOIST_CLIENT_ID
+  client_secret_env: null
+  app_var_key: todoist_oauth_state
+  prompt: null
+  access_type: null
+  include_granted_scopes: false
+alias_from:
+- identity.email
+- identity.display_name
+```
+
+This follows the Todoist flow verified with two separate accounts. The
+connector and OAuth step use the same `app_var_key`, which identifies
+connection-scoped token state. The `identity` mapping reads Todoist's
+`user-info` tool; other providers need their own verified identity mapping.
+
+```bash
+truffile validate ./todoist-tutorial
+truffile deploy ./todoist-tutorial
+truffile connections add "Todoist Tutorial"
+truffile connections list "Todoist Tutorial" --json
+truffile connections permissions "Todoist Tutorial" read-only
+```
+
+The permissions command prompts for the account. Repeat it for each account
+you want to restrict. The provider's OAuth scopes and Truffle's account
+permissions are separate: granting a provider scope does not override Truffle's
+permission settings.
+
+## OAuth callbacks and credentials
+
+If the browser runs on the same computer as the CLI, the local callback
+listener can receive a registered localhost redirect. If you open the browser
+on another computer, copy its final localhost callback URL into the waiting
+CLI prompt, even if that browser cannot load the callback page. The CLI
+validates the state against the pending request.
+
+Use the current sign-in link. Firmware may expire a setup after 15 minutes;
+a longer CLI timeout does not extend that window. Start a fresh setup after
+expiry. Never reuse a previous callback for another account.
+
+Firmware exchanges and stores native OAuth credentials. Custom Python apps
+should use the matching runtime credential helpers; connection-scoped tokens
+must not be copied into app-global variables or source files. Native connectors
+handle credential use and refresh through firmware.
+
+## Account lifecycle and permissions
+
+```bash
+truffile connections reconnect "Todoist Tutorial"
+truffile connections rename "Todoist Tutorial" Work
+truffile connections permissions "Todoist Tutorial" Work auto-review --notes "Review external writes"
+truffile connections delete "Todoist Tutorial" Work
+truffile deploy ./todoist-tutorial --update
+```
+
+Friendly app names, bundle IDs, and app UUIDs work. An omitted account opens a
+picker. In the rename example, choose an account and name it `Work`. To avoid
+prompting, supply an exact account alias or connection UUID; deletion also
+requires `--yes` in scripts.
+
+New accounts use device policy unless an account override exists. Set an
+override with `read-only`, `read-write`, or `auto-review`; `default` removes the
+override and inherits device policy. The CLI does not change device-wide
+defaults or offer an atomic install-and-set-permissions option. Tool annotations
+such as `readOnlyHint` describe tool behavior; they are not permission grants.
+
+An uploaded `--update` preserves installed accounts and their settings.
+`--replace` intentionally resets accounts after confirmation. Test both accounts
+after an update and verify that reconnecting one leaves the other intact.
+See [deployment and account commands](/sdk/deployment) for cancellation,
+noninteractive forms, packaging rules, and firmware requirements.

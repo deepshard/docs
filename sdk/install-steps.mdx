@@ -15,6 +15,7 @@ steps:
     type: files
     files:
       - source: ./my_app_foreground.py
+        destination: ./my_app_foreground.py
   - name: Configure
     type: text
     fields:
@@ -24,17 +25,36 @@ steps:
         env: MY_APP_API_KEY
 ```
 
-Valid app manifest step types are **`bash`**, **`files`**, **`text`**, **`oauth`**, and **`welcome`**. Browser/VNC steps are rejected by `truffile validate`.
+Common native steps are **`bash`**, **`files`**, **`text`**, **`oauth`**, and
+**`welcome`**. Firmware also supports provider-specific browser/VNC setup plans.
+Normal deployment uploads the original manifest and lets firmware validate it.
 
 <Note>
-The local CLI builder supports `oauth` with a model-friendly flow: it prints the authorization URL, accepts a pasted callback URL or authorization code, exchanges it for tokens, writes the token file into the app container, and injects the token file env var into later build steps and the final app process. If an update reaches an auth step that cannot complete non-interactively, fail clearly and ask the user to reauthenticate from Settings.
+For new authenticated apps, use connection-scoped setup and credentials. See
+[accounts and authentication](/sdk/accounts). Normal CLI deployment relays
+forms and OAuth callbacks to firmware; firmware performs token exchange and
+storage. The explicit `--legacy-builder` path retains older token-file recipes.
 </Note>
+
+## Installation scope and account scope
+
+Use `truffile_version: 4` for a process-based account-aware manifest, or version
+5 for a native connector. Declare `connections: multi` when the app supports
+multiple accounts. Mark shared dependencies/files with `scope: install`, and
+authentication/configuration with `scope: connection`. The connection plan runs
+for first setup, adding an account, and reconnecting an account.
+
+An uploaded `--update` preserves existing accounts. Keep credentials out of
+install-scoped files and app-global variables. Legacy `update_policy` and
+`update_check` examples below describe older recipes; do not substitute them
+for connection scope in a new multi-account app.
+
 
 ---
 
 ## Step ordering
 
-Steps execute top-to-bottom. The three practical rules:
+Steps execute top-to-bottom. The practical rules:
 
 1. **Install dependencies before anything that needs them.** Put your `bash` step that runs `pip install` early.
 2. **Copy files before running them.** Any `bash` step or `text` validator that invokes a Python file needs a preceding `files` step that uploads it.
@@ -334,7 +354,9 @@ if not api_key:
 
 ## `oauth`
 
-Runs an OAuth authorization flow during install and writes the resulting token payload to a file in the app container. Use it when the provider requires browser authorization instead of a pasted API key.
+Runs OAuth authorization for the connection being configured. Firmware stores
+native token state for that connection. Older process-based recipes also use a
+token file in the app container. Use it when the provider requires browser authorization instead of a pasted API key.
 
 There are two real patterns in the bundled examples:
 
@@ -405,9 +427,9 @@ There are two real patterns in the bundled examples:
 | `resource_metadata_endpoint` | remote MCP | OAuth protected-resource metadata URL. |
 | `oauth_resource` | remote MCP | Resource audience for the remote MCP server. |
 | `client_name` | remote MCP | Client display name used during DCR. |
-| `token_output_file` | yes | Path where the installer writes token JSON in the app container. |
-| `token_file_env_name` | yes | Env var exposed to the app process with the token file path. |
-| `app_var_key` | yes | App-scoped key used to persist OAuth state. |
+| `token_output_file` | legacy/process recipes | Optional token-file compatibility path; native connectors use connection-scoped token state. |
+| `token_file_env_name` | with a token file | Env var exposed to a Python app with its token-file path. |
+| `app_var_key` | native OAuth | Credential key within the selected connection; match the connector or runtime helper configuration. |
 | `update_check` | no | Verify command to avoid unnecessary reauth when tokens still work. |
 
 ### App-side OAuth helper
@@ -416,7 +438,7 @@ In Python, subclass `OAuth` for normal providers or `RemoteMcpOAuth` for remote 
 
 The `whoop` example uses `WhoopOAuth(OAuth)` and stores tokens at `WHOOP_TOKEN_STORE_PATH`. The `notion` example uses `NotionAuth(RemoteMcpOAuth)` and stores tokens at `NOTION_OAUTH_TOKEN_FILE`.
 
-For public/dynamically registered remote MCP clients, the CLI uses PKCE automatically when no client secret is available. Token JSON also includes refresh metadata such as `client_id`, `client_secret` when present, `redirect_uri`, `token_endpoint`, and `resource`, so app-side helpers can refresh later without needing separate env vars.
+For public/dynamically registered remote MCP clients, the OAuth installer uses PKCE automatically when no client secret is available. Token JSON also includes refresh metadata such as `client_id`, `client_secret` when present, `redirect_uri`, `token_endpoint`, and `resource`, so app-side helpers can refresh later without needing separate env vars.
 
 ---
 
@@ -441,12 +463,13 @@ The `viator` example uses this pattern after a `bash` verify step because its up
 
 ## Validating before you deploy
 
-`truffile validate` catches most step-level problems before you ever hit the device:
+Run `truffile validate ./my-app` and `truffile deploy ./my-app --dry-run` for
+local bundle preflight. These check basic metadata, archive paths and packaging
+limits; they do not reproduce firmware's complete schema validator or execute
+provider checks. Run `python -m compileall -q ./my-app` for Python syntax and
+your app's tests for client behavior. Firmware validates the full manifest and
+install plan when you deploy.
 
-- Unknown step types are rejected with a clear message that lists the supported manifest types.
-- `vnc` / browser setup steps are rejected with a clear message telling the user to install through Symphony Settings.
-- Missing required fields (`type`, `run` on bash, `files` on files) produce errors.
-- Missing `source` files in `files` steps are caught.
-- Python syntax errors in any uploaded `.py` file are caught.
-
-Run `truffile validate ./my-app` before every `truffile deploy` — it's nearly instant and catches everything except runtime failures in your `bash` commands and `text` validators.
+For an older manifest that explicitly uses the direct builder,
+`truffile validate ./my-app --legacy-builder` retains the older schema and
+source checks. That validator does not support modern connector/browser plans.

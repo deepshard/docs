@@ -26,7 +26,7 @@ Requirements:
 - Install Truffile with `pip install truffile`; if it is already installed, make sure it is upgraded to the latest version.
 - Verify the install with `truffile --help`.
 - Run `truffile load all` so the bundled skills and example apps are copied into this workspace under `./truffile/skills` and `./truffile/examples`.
-- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then run `truffile scan` and `truffile connect <device-name>`. During `truffile connect`, I can enter my Truffle username and password, then approve the new session on my Truffle device.
+- Do not require a Truffle device to finish setup. If no device is connected yet, tell me that I first need to onboard my Truffle through the Symphony desktop client at https://docs.truffle.net/client/overview, then run `truffile scan` and `truffile connect <device-name>`. During `truffile connect`, I can enter my User ID from Symphony Settings, then approve the new session on my Truffle device.
 
 After `truffile load all`, inspect the local resources before giving me the onboarding:
 - Read `./truffile/skills/truffile-cli/SKILL.md` for scan/connect/create/validate/deploy/list/delete/obsidian.
@@ -37,7 +37,7 @@ After `truffile load all`, inspect the local resources before giving me the onbo
 - Run `truffile --help`, `truffile deploy --help`, `truffile convo --help`, and `truffile infer --help` so you know the CLI surface.
 
 When setup is complete, give me a short onboarding that covers:
-- that connecting requires a Symphony-onboarded Truffle, my Truffle username and password, and device approval during `truffile connect`
+- that connecting requires a Symphony-onboarded Truffle, my User ID from Symphony Settings, and device approval during `truffile connect`
 - how to connect a Truffle device
 - how to use Convo with the on-device agent, including that old Task histories are not visible after the one-way cutover
 - how to use Truffile as an inference endpoint/client
@@ -135,12 +135,31 @@ The prompt works because Truffile is CLI-first: every core workflow has explicit
 With your environment activated:
 
 ```bash
-pip install truffile
+python -m pip install --upgrade truffile
 ```
 
 <Note>
-Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview) and complete device onboarding. When you run `truffile connect`, enter your Truffle username and password, then approve the new session on your Truffle device.
+Before connecting from Truffile, onboard your device through the Symphony desktop client. Download Symphony from [the client overview](/client/overview) and complete device onboarding. When you run `truffile connect`, enter your User ID from Symphony Settings, then approve the new session on your Truffle device.
 </Note>
+
+## Build and manage apps
+
+Truffile 0.3.35 adds native installation, account setup, developer uploads, and
+friendly account selection. Use current device firmware for uploaded updates
+and replacements; unsupported firmware is detected before those operations.
+
+```bash
+truffile connect 6272
+truffile create my-app --path ./apps
+truffile validate ./apps/my-app
+truffile deploy ./apps/my-app
+truffile deploy ./apps/my-app --update
+```
+
+Read [deployment](/sdk/deployment) and [accounts and authentication](/sdk/accounts)
+for updates, replacement, OAuth, API keys, and permission controls. After upgrading,
+refresh previously exported skills with `truffile load skills --force` only if
+you intend to overwrite those exported copies; keep your app source separately.
 
 ## Next steps
 
