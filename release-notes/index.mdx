@@ -7,9 +7,47 @@ mode: "wide"
 <div className="xl:w-[calc(100%+10rem)] xl:max-w-none 2xl:w-[calc(100%+14rem)]">
   <AccordionGroup>
     <Accordion
-      title="October 23, 2026"
+      title="November 5, 2026"
       description="Latest release"
       defaultOpen
+    >
+      <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
+          <div className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">
+            Truffle
+          </div>
+          <div>
+            <h3 className="m-0 text-2xl font-medium tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+              A new Context map, interactive cards, Browser Use, and dreams.
+            </h3>
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              poster="/images/truffle/truffle-nov5-poster.jpg"
+              className="mt-5 w-full rounded-2xl border border-zinc-200 bg-black object-cover sm:rounded-3xl dark:border-zinc-800"
+            >
+              <source
+                src="/images/truffle/truffle-nov5.mp4"
+                type="video/mp4"
+              />
+              Your browser does not support inline video playback.
+            </video>
+            <ul className="mt-5 space-y-2 text-base leading-7 text-zinc-700 sm:text-lg sm:leading-8 dark:text-zinc-300">
+              <li><strong>A new iteration of Context map.</strong> View and search across everything your Truffle knows about you. This still isn’t the final version, so please share your feedback.</li>
+              <li><strong>Interactive cards on Home.</strong> Control your music, track an Uber order, and interact with apps directly from your Home screen.</li>
+              <li><strong>Your Truffle can now use the browser.</strong> Browser Use gives your Truffle access to a cloud browser while credentials for sites you sign into remain stored locally on your Truffle.</li>
+              <li><strong>More apps.</strong> Uber, Uber Eats, Amazon, Erewhon, and more are now available in Truffle.</li>
+              <li><strong>Your Truffle can now dream.</strong> Head to Settings to choose your preferred dream duration.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Accordion>
+
+    <Accordion
+      title="October 23, 2026"
+      description="Previous release"
     >
       <div className="mb-10 overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid gap-4 px-4 py-6 sm:px-6 sm:py-7 md:grid-cols-[140px_1fr] md:gap-6 md:px-7 md:py-8">
