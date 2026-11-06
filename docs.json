@@ -42,6 +42,8 @@
             "group": "Building Apps",
             "pages": [
               "sdk/building-apps",
+              "sdk/deployment",
+              "sdk/accounts",
               "sdk/focus-app",
               "sdk/ambient-app",
               "sdk/install-steps"

@@ -22,14 +22,14 @@ Most workflows can be driven with explicit arguments, which makes them easy to
 test in CI or from another agent:
 
 ```bash
-truffile connect truffle-1234
+truffile connect 6272 --user-id "$TRUFFLE_USER_ID"
 truffile list devices
 truffile list apps --json
 truffile load all
 truffile create my-app --path ./apps
 truffile validate ./apps/my-app
 truffile deploy ./apps/my-app --dry-run --json
-truffile deploy ./apps/my-app --json --non-interactive --replace
+truffile deploy ./apps/my-app --update --json --non-interactive
 truffile delete my-app
 truffile convo --new --json --quiet --timeout 60 "Summarize my installed apps"
 truffile infer "Say pong" --json --no-stream --quiet
@@ -70,15 +70,15 @@ Select a device by number to start the connection flow.
 If you already know your device name:
 
 ```bash
-truffile connect truffle-1234
+truffile connect 6272 --user-id "$TRUFFLE_USER_ID"
 ```
 
-Enter your Truffle username and password when prompted, then approve the connection on your device.
+Enter your User ID from Symphony Settings when prompted, then approve the connection on your device.
 
 Credentials are saved locally — subsequent connections are automatic.
 
 <Note>
-Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview) and finish device onboarding there. The CLI will ask for your Truffle username and password before you approve the session on your device.
+Before `truffile connect`, onboard the device in the Symphony desktop client. Download Symphony from [the client overview](/client/overview) and finish device onboarding there. The CLI will ask for your User ID from Symphony Settings before you approve the session on your device.
 </Note>
 
 ---
@@ -390,41 +390,67 @@ truffile create my-app --path ./apps
 
 Creates a scaffold with `truffile.yaml`, foreground/background entry points, and a default icon.
 
-### Validate an app
+### Validate and deploy
 
 ```bash
 truffile validate ./my-app
+truffile deploy ./my-app --dry-run
+truffile deploy ./my-app
 ```
 
-Checks your `truffile.yaml` configuration and Python file syntax.
+`validate` and `--dry-run` check bundle structure and basic manifest metadata.
+Firmware validates full manifest semantics during installation. For Python
+syntax, also run `python -m compileall -q ./my-app`.
 
-### Deploy an app
+Normal deploy uploads your directory or `.truffle` bundle to the native
+installer, which runs its builders and account setup. Text/password forms are
+shown in the terminal; OAuth opens a sign-in flow with a callback/code handoff;
+browser/VNC setup cards expose the device setup URL. Actual provider support
+depends on the firmware and app's setup plan.
+
+### Update or replace
 
 ```bash
-# deploy from current directory
-truffile deploy
-
-# deploy from a path
-truffile deploy ./my-app
-
-# dry run — show the deploy plan without touching the device
-truffile deploy --dry-run
-
-# interactive mode — opens a terminal inside the app container
-truffile deploy --interactive
+truffile deploy ./my-app --update
+truffile deploy ./my-app --replace
 ```
 
-The deploy process:
-1. Validates `truffile.yaml` and Python syntax
-2. Resolves app shape (foreground, background, or both)
-3. Uploads files and runs installation steps
-4. Registers the app with the device
+Keep the same bundle ID. Update preserves accounts and settings. Replace runs
+fresh setup and resets accounts after confirmation; scripts must add `--yes`.
+Both require firmware with developer-upload support. Normal deploy refuses an
+existing bundle ID until you choose a mode.
 
-`oauth` steps print an authorization URL and ask for the pasted callback URL or code. `welcome` steps print their content and wait for Enter. `vnc` / browser setup steps are rejected by validation and should be installed through Symphony Settings.
+`--legacy-builder` retains the old direct builder for fresh installations.
+`--interactive` opens that legacy builder's debug shell. It is not the flag
+for normal interactive sign-in and does not support native connectors.
 
-<Tip>
-Use `truffile deploy --interactive` to open a shell inside your app's container. Useful for debugging, installing extra dependencies, or testing your app manually before finalizing.
-</Tip>
+### Accounts and permissions
+
+```bash
+truffile connections list "My App" --json
+truffile connections add "My App"
+truffile connections reconnect "My App"
+truffile connections rename "My App" Work
+truffile connections permissions "My App" Work read-only
+truffile connections delete "My App" Work
+```
+
+App names, bundle IDs and UUIDs work. Omit the account for a picker; the rename
+example picks an account and calls it `Work`. Scripts must supply an unambiguous
+account alias or UUID. `--json` and `--non-interactive` never prompt.
+
+Permission modes are `default`, `read-only`, `read-write`, and `auto-review`.
+`default` removes an account override and inherits device policy. `--notes`
+sets review notes; omitting it keeps saved notes. New accounts start with device
+policy, and the CLI does not modify device-wide defaults.
+
+Supply `--answers-file /private/answers.json` to automate text/password setup.
+Keep that JSON map of field names to values outside your app directory. OAuth
+requires interactive approval; credentials remain with the device's installer.
+On expiry or disconnect, inspect the installed app before retrying.
+
+See [deployment](/sdk/deployment) for all lifecycle options and
+[accounts and authentication](/sdk/accounts) for authoring patterns.
 
 ### List apps and devices
 
@@ -492,10 +518,13 @@ Both modes let you talk to models on your Truffle, but they serve different purp
 | `truffile connect <device>` | Connect to a device |
 | `truffile disconnect [device\|all]` | Disconnect and clear credentials |
 | `truffile create [name] [--path <dir>]` | Scaffold a new app |
-| `truffile validate [path]` | Validate app config and sources |
+| `truffile validate [path]` | Check bundle structure and basic manifest metadata |
 | `truffile deploy [path]` | Deploy app to connected device |
-| `truffile deploy --dry-run` | Show deploy plan without changes |
-| `truffile deploy --interactive` | Deploy with interactive terminal |
+| `truffile deploy --dry-run` | Inspect the bundle without changing the device |
+| `truffile deploy [path] --update` | Upload code while preserving accounts |
+| `truffile deploy [path] --replace` | Run fresh setup and reset accounts after confirmation |
+| `truffile connections <action> <app>` | List, add, reconnect, rename, delete, or set account permissions |
+| `truffile deploy --interactive` | Open the legacy builder debug shell |
 | `truffile list apps` | List installed apps |
 | `truffile list devices` | List connected devices |
 | `truffile delete [all\|1 2 3]` | Delete apps (interactive, by index, or all) |
