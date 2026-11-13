@@ -11,5 +11,5 @@ If you want help getting set up, want to share feedback, or want to talk through
 </Card>
 
 <Info>
-You can also reach us on [Discord](https://discord.gg/itsalltruffles) or email <span dangerouslySetInnerHTML={{ __html: '<!--email_off--><a href="mailto:support@deepshard.org" class="link">support@deepshard.org</a><!--/email_off-->' }} />.
+You can also reach us on [Discord](https://discord.gg/itsalltruffles) or email <button type="button" data-email="support@deepshard.org" onClick={(event) => { window.location.href = `mailto:${event.currentTarget.dataset.email}`; }} className="link cursor-pointer border-0 bg-transparent p-0 font-inherit">support<span>@</span>deepshard.org</button>.
 </Info>

@@ -20,5 +20,5 @@ Symphony is available for Windows, macOS (Intel and Apple Silicon), and Linux. D
 </CardGroup>
 
 <Info>
-Need help? Check out our [Discord](https://discord.gg/itsalltruffles) or reach out to <span dangerouslySetInnerHTML={{ __html: '<!--email_off--><a href="mailto:support@deepshard.org" class="link">support@deepshard.org</a><!--/email_off-->' }} /> for questions.
+Need help? Check out our [Discord](https://discord.gg/itsalltruffles) or reach out to <button type="button" data-email="support@deepshard.org" onClick={(event) => { window.location.href = `mailto:${event.currentTarget.dataset.email}`; }} className="link cursor-pointer border-0 bg-transparent p-0 font-inherit">support<span>@</span>deepshard.org</button> for questions.
 </Info>
